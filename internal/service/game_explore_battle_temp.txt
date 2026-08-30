@@ -1,0 +1,30 @@
+func (g *Game) heal(player *model.Player) (GameResult, bool, error) {
+	if player.Health >= player.MaxHealth {
+		return GameResult{Title: "气血充盈", Content: "无需疗伤。"}, true, nil
+	}
+	// 濒死→引导复生
+	if player.Health <= 1 {
+		return g.resurrectPlayer(player)
+	}
+	item, err := g.itemByName("仙露")
+	hasDew := err == nil && g.itemQuantity(player.ID, item.ID) >= 1
+	if hasDew {
+		_ = g.players.AdjustItem(player.ID, item.ID, -1)
+		recover := max64(int64(item.EffectValue), 20)
+		newHealth := min64(player.Health+recover, player.MaxHealth)
+		_ = g.store.DB.Model(player).Update("health", newHealth).Error
+		return GameResult{Title: "疗伤", Content: fmt.Sprintf("服下仙露，药力化开滋养经脉。\n━━━━━━━━━━━\n气血恢复：+%d\n当前：%d/%d\n━━━━━━━━━━━\n伤势已无大碍，但不宜立刻硬撼群妖。", newHealth-player.Health, newHealth, player.MaxHealth), Actions: []string{"状态", "修炼", "修炼", "探索"}}, true, nil
+	}
+	// 无仙露时消耗法力和灵石运功止血
+	if player.Mana < 10 || player.SpiritStones < 5 {
+		return GameResult{Title: "疗伤失败", Content: "没有仙露。濒死状态下可发送「回城复活」消耗修为返回——或者先通过签到/领取签到奖励获取仙露，再自行疗伤。\n━━━━━━━━━━━\n当前：仙露×0 · 法力%d（运功需10）/ 灵石%d（运功需5）", Actions: []string{"回城复活", "签到", "集市", "状态"}}, true, nil
+	}
+	recover := max64(player.MaxHealth*25/100, 20)
+	newHealth := min64(player.Health+recover, player.MaxHealth)
+	_ = g.store.DB.Model(player).Updates(map[string]any{
+		"health": newHealth,
+		"mana":   gorm.Expr("mana - ?", 10),
+		"spirit_stones": gorm.Expr("spirit_stones - ?", 5),
+	}).Error
+	return GameResult{Title: "运功疗伤", Content: fmt.Sprintf("丹田余息在经脉中流转，灵石灵炁随法力注入伤处，伤势开始愈合。\n━━━━━━━━━━━\n气血恢复：+%d（最大气血25%%）\n当前：%d/%d\n消耗：法力10 · 灵石5\n无需仙露即可止血，但完全恢复仍建议备齐丹药。", newHealth-player.Health, newHealth, player.MaxHealth), Actions: []string{"物品 仙露", "集市", "状态", "修炼"}}, true, nil
+}
