@@ -52,8 +52,6 @@ pub struct WorkerReply {
     #[serde(default)]
     pub handled: bool,
     pub result: Option<GamePayload>,
-    #[serde(default)]
-    pub error: String,
     pub protocol_version: Option<u32>,
     #[serde(default)]
     pub version: String,
@@ -271,9 +269,6 @@ fn exchange_line(
 }
 
 fn extract_worker(runtime_dir: &Path) -> Result<PathBuf, String> {
-    if EMBEDDED_WORKER.is_empty() {
-        return Err("动态插件未嵌入 Go worker".to_string());
-    }
     let bin_dir = runtime_dir.join("bin");
     fs::create_dir_all(&bin_dir).map_err(|error| format!("创建 worker bin 目录失败：{error}"))?;
     let executable = bin_dir.join(format!(
