@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"xianlv/internal/appinfo"
 	"xianlv/internal/config"
+	"xianlv/internal/handler"
 	"xianlv/internal/service"
 	"xianlv/internal/storage"
 )
@@ -21,7 +23,7 @@ import (
 //
 // 由 Rust 插件（plugin/）spawn，通过 stdin/stdout 的 JSON 行协议通信：
 //   入站 {"type":"ping"}               → {"type":"pong"}
-//   入站 {"type":"msg", ...}           → P1 起实现，当前返回 not_implemented
+//   入站 {"type":"msg", ...}           → 执行游戏命令并返回 GameResult
 //   入站 {"type":"shutdown"}           → 进程退出
 // 协议详见 docs/qimenbot-migration-plan.md。
 
@@ -148,6 +150,89 @@ func initRuntime(dataDir string) error {
 	return nil
 }
 
+// processInbound 执行一条完整消息，保持游戏内核原有的命令语义。
+func processInbound(message InboundMessage) (OutboundReply, error) {
+	message.Text = normalizeMessage(message.Text)
+	if message.Type != "msg" {
+		return OutboundReply{Type: "error", Error: "消息类型必须为 msg"}, nil
+	}
+	if strings.TrimSpace(message.SenderID) == "" {
+		return OutboundReply{Type: "reply", Handled: false}, nil
+	}
+	groupID := strings.TrimSpace(message.GroupID)
+	if message.IsPrivate || groupID == "" {
+		groupID = "私信"
+	}
+	scope := "group"
+	if groupID == "私信" {
+		scope = "private"
+	}
+	if !acceptMessageOnce(scope, groupID, message.SenderID, message.MessageID, message.Text) {
+		return OutboundReply{Type: "reply", Handled: false}, nil
+	}
+
+	runtimeState.RLock()
+	game := runtimeState.game
+	runtimeState.RUnlock()
+	if game == nil {
+		return OutboundReply{}, fmt.Errorf("游戏内核尚未初始化")
+	}
+	utility := utilityResult(groupID, message.SenderID, message.Text)
+	if utility != nil {
+		return gameResultReply(*utility)
+	}
+	command, ok := parseInboundCommand(game, message.SenderID, message.Text)
+	if !ok {
+		return OutboundReply{Type: "reply", Handled: false}, nil
+	}
+	if groupID != "私信" {
+		allowed, status, err := game.GroupAccessAllowed(groupID)
+		if err != nil {
+			return OutboundReply{}, err
+		}
+		if !allowed && command.Spec.ID != 1191 {
+			blocked := game.GroupAccessBlockedResult(groupID, status)
+			return gameResultReply(blocked)
+		}
+		if allowed {
+			rememberKnownGroup(groupID)
+		}
+	}
+	result, handled, err := game.Execute(groupID, message.SenderID, command)
+	if err != nil {
+		return OutboundReply{}, err
+	}
+	if !handled {
+		return OutboundReply{Type: "reply", Handled: false}, nil
+	}
+	return gameResultReply(result)
+}
+
+func parseInboundCommand(game *service.Game, accountID, text string) (handler.ParsedCommand, bool) {
+	command, ok := handler.ParseCommand(text)
+	if ok {
+		return command, true
+	}
+	return game.ResolveShortcut(accountID, text)
+}
+
+func gameResultReply(result service.GameResult) (OutboundReply, error) {
+	payload := GamePayload{
+		Title: result.Title, Content: result.Content, Markdown: result.Markdown(),
+		TextFallback: result.Text(), ImageOnly: result.ImageOnly, Actions: result.Actions,
+		Broadcast: result.BroadcastContent,
+	}
+	if result.ImageOnly && strings.TrimSpace(result.ImageURL) != "" {
+		image, err := os.ReadFile(result.ImageURL)
+		_ = os.Remove(result.ImageURL)
+		if err != nil {
+			return OutboundReply{}, fmt.Errorf("读取状态图: %w", err)
+		}
+		payload.ImageBase64 = base64.StdEncoding.EncodeToString(image)
+	}
+	return OutboundReply{Type: "reply", Handled: true, Result: &payload}, nil
+}
+
 // runStdioLoop 是协议 v0 主循环：逐行读 JSON、应答、直到 EOF 或 shutdown。
 func runStdioLoop(input io.Reader, output io.Writer) error {
 	scanner := bufio.NewScanner(input)
@@ -183,8 +268,18 @@ func runStdioLoop(input io.Reader, output io.Writer) error {
 			encoder.Encode(OutboundReply{Type: "bye"})
 			return nil
 		case "msg":
-			// P1（桥接打通）实现完整消息处理链；P0 仅回执。
-			if err := encoder.Encode(OutboundReply{Type: "reply", Error: "not_implemented: P1 将接入消息处理链"}); err != nil {
+			var message InboundMessage
+			if err := json.Unmarshal([]byte(line), &message); err != nil {
+				if err := encoder.Encode(OutboundReply{Type: "error", Error: "无法解析消息: " + err.Error()}); err != nil {
+					return err
+				}
+				continue
+			}
+			reply, err := processInbound(message)
+			if err != nil {
+				reply = OutboundReply{Type: "reply", Error: err.Error()}
+			}
+			if err := encoder.Encode(reply); err != nil {
 				return err
 			}
 		default:
