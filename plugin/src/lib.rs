@@ -10,7 +10,7 @@ use abi_stable_host_api::{
     PluginInitConfig, PluginInitResult,
 };
 use qimen_dynamic_plugin_derive::dynamic_plugin;
-use serde_json::Value;
+use serde::Deserialize;
 
 const PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROTOCOL_VERSION: u32 = 1;
@@ -37,6 +37,47 @@ impl Default for PluginConfig {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct ConfigDocument {
+    worker: WorkerConfigDocument,
+    messages: MessageConfigDocument,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct WorkerConfigDocument {
+    enabled: bool,
+    spawn_timeout_secs: u64,
+    io_timeout_secs: u64,
+    data_subdir: String,
+}
+
+impl Default for WorkerConfigDocument {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            spawn_timeout_secs: 20,
+            io_timeout_secs: 25,
+            data_subdir: "xianchen".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct MessageConfigDocument {
+    qq_official_markdown: bool,
+}
+
+impl Default for MessageConfigDocument {
+    fn default() -> Self {
+        Self {
+            qq_official_markdown: true,
+        }
+    }
+}
+
 static CONFIG: OnceLock<RwLock<PluginConfig>> = OnceLock::new();
 
 fn config_slot() -> &'static RwLock<PluginConfig> {
@@ -53,52 +94,39 @@ fn replace_config(config: PluginConfig) {
     }
 }
 
-fn u64_field(value: &Value, key: &str) -> Option<u64> {
-    value.get(key).and_then(Value::as_u64)
-}
-
-fn string_field(value: &Value, key: &str) -> Option<String> {
-    value
-        .get(key)
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|trimmed| !trimmed.is_empty())
-        .map(str::to_string)
-}
-
-fn bool_field(value: &Value, key: &str) -> Option<bool> {
-    value.get(key).and_then(Value::as_bool)
-}
-
 /// 解析宿主传入的 JSON 配置；空配置使用默认值，字段非法返回错误。
 pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
     let trimmed = config_json.trim();
     if trimmed.is_empty() {
         return Ok(PluginConfig::default());
     }
-    let root: Value =
-        serde_json::from_str(trimmed).map_err(|error| format!("插件配置不是有效 JSON: {error}"))?;
-    let mut config = PluginConfig::default();
-    if let Some(worker) = root.get("worker") {
-        if let Some(enabled) = bool_field(worker, "enabled") {
-            config.worker_enabled = enabled;
-        }
-        if let Some(timeout) = u64_field(worker, "spawn_timeout_secs") {
-            config.spawn_timeout_secs = timeout.clamp(5, 120);
-        }
-        if let Some(timeout) = u64_field(worker, "io_timeout_secs") {
-            config.io_timeout_secs = timeout.clamp(5, 29);
-        }
-        if let Some(subdir) = string_field(worker, "data_subdir") {
-            config.data_subdir = subdir;
-        }
+    let document: ConfigDocument = serde_json::from_str(trimmed)
+        .map_err(|error| format!("插件配置无效: {error}"))?;
+    if !(5..=120).contains(&document.worker.spawn_timeout_secs) {
+        return Err("worker.spawn_timeout_secs 必须在 5 到 120 秒之间".to_string());
     }
-    if let Some(messages) = root.get("messages") {
-        if let Some(markdown) = bool_field(messages, "qq_official_markdown") {
-            config.qq_official_markdown = markdown;
-        }
+    if !(5..=29).contains(&document.worker.io_timeout_secs) {
+        return Err("worker.io_timeout_secs 必须在 5 到 29 秒之间".to_string());
     }
-    Ok(config)
+    let data_subdir = document.worker.data_subdir.trim();
+    if data_subdir.is_empty() || data_subdir.chars().count() > 64 {
+        return Err("worker.data_subdir 长度必须在 1 到 64 个字符之间".to_string());
+    }
+    if data_subdir == "."
+        || data_subdir == ".."
+        || data_subdir.contains('/')
+        || data_subdir.contains('\\')
+        || data_subdir.chars().any(char::is_control)
+    {
+        return Err("worker.data_subdir 必须是安全的单级目录名".to_string());
+    }
+    Ok(PluginConfig {
+        worker_enabled: document.worker.enabled,
+        spawn_timeout_secs: document.worker.spawn_timeout_secs,
+        io_timeout_secs: document.worker.io_timeout_secs,
+        data_subdir: data_subdir.to_string(),
+        qq_official_markdown: document.messages.qq_official_markdown,
+    })
 }
 
 /// 诊断命令文本：P0 阶段反映插件自身状态（尚无 worker 桥接）。
@@ -195,13 +223,26 @@ mod tests {
     }
 
     #[test]
-    fn timeouts_are_clamped_to_protocol_limits() {
-        let config = parse_config(
-            r#"{"worker":{"spawn_timeout_secs":1,"io_timeout_secs":999}}"#,
-        )
-        .unwrap();
-        assert_eq!(config.spawn_timeout_secs, 5);
-        assert_eq!(config.io_timeout_secs, 29);
+    fn out_of_range_timeouts_are_rejected() {
+        assert!(parse_config(r#"{"worker":{"spawn_timeout_secs":1}}"#).is_err());
+        assert!(parse_config(r#"{"worker":{"io_timeout_secs":999}}"#).is_err());
+    }
+
+    #[test]
+    fn invalid_types_and_unknown_fields_are_rejected() {
+        assert!(parse_config(r#"{"worker":[]}"#).is_err());
+        assert!(parse_config(r#"{"unknown":true}"#).is_err());
+    }
+
+    #[test]
+    fn unsafe_data_subdirs_are_rejected() {
+        for subdir in ["", ".", "..", "../outside", r#"..\outside"#] {
+            let json = serde_json::json!({ "worker": { "data_subdir": subdir } }).to_string();
+            assert!(
+                parse_config(&json).is_err(),
+                "accepted unsafe subdir {subdir:?}"
+            );
+        }
     }
 
     #[test]
