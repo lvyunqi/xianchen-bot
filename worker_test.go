@@ -73,7 +73,7 @@ func TestStdioLoopPingPong(t *testing.T) {
 	}
 }
 
-func TestStdioLoopMsgIsNotImplementedYet(t *testing.T) {
+func TestStdioLoopMsgWithoutCommandIsIgnored(t *testing.T) {
 	var output strings.Builder
 	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"text\":\"状态\"}"+ "\n"), &output)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestStdioLoopMsgIsNotImplementedYet(t *testing.T) {
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output.String())), &reply); err != nil {
 		t.Fatalf("reply is not valid JSON: %v", err)
 	}
-	if reply.Type != "reply" || reply.Error == "" {
-		t.Fatalf("expected P0 not-implemented reply, got %+v", reply)
+	if reply.Type != "reply" || reply.Handled || reply.Error != "" {
+		t.Fatalf("expected unmatched message to be ignored, got %+v", reply)
 	}
 }
