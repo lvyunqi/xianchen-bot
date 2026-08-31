@@ -1,0 +1,29 @@
+{
+  "ui:order": [
+    "worker",
+    "messages"
+  ],
+  "fields": {
+    "": {
+      "ui:order": [
+        "worker",
+        "messages"
+      ]
+    },
+    "/worker": {
+      "ui:order": [
+        "enabled",
+        "spawn_timeout_secs",
+        "io_timeout_secs",
+        "data_subdir"
+      ],
+      "itemTitle": "Go 内核进程"
+    },
+    "/messages": {
+      "ui:order": [
+        "qq_official_markdown"
+      ],
+      "itemTitle": "消息渲染"
+    }
+  }
+}

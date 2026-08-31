@@ -1,0 +1,19 @@
+[package]
+name = "qimen-dynamic-plugin-xianchen"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+description = "QimenBot 动态插件：仙尘修仙文字游戏（Go 内核桥接）"
+license = "Apache-2.0"
+repository = "https://gitea.acmecloud.cn/mryunqi/dengxian-bot"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+abi-stable-host-api = "=0.1.13"
+qimen-dynamic-plugin-derive = "=0.1.13"
+abi_stable = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
