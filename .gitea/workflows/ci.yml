@@ -51,9 +51,9 @@ jobs:
           workspaces: plugin
       - name: prepare embedded worker
         run: |
+          cd ..
           mkdir -p plugin/embedded
           go build -o plugin/embedded/xianchen-worker .
-        working-directory: ..
       - name: cargo fmt
         run: cargo fmt --all -- --check
       - name: cargo clippy

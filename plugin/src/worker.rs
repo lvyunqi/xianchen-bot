@@ -9,6 +9,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 const EMBEDDED_WORKER: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/xianchen-worker"));
+const MAX_WORKER_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct InboundMessage {
@@ -96,14 +97,22 @@ impl WorkerRuntime {
             .stderr(Stdio::inherit())
             .spawn()
             .map_err(|error| format!("启动 Go worker {} 失败：{error}", executable.display()))?;
-        let mut stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| "Go worker stdin 未建立".to_string())?;
-        let stdout = child
-            .stdout
-            .take()
-            .ok_or_else(|| "Go worker stdout 未建立".to_string())?;
+        let mut stdin = match child.stdin.take() {
+            Some(stdin) => stdin,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("Go worker stdin 未建立".to_string());
+            }
+        };
+        let stdout = match child.stdout.take() {
+            Some(stdout) => stdout,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("Go worker stdout 未建立".to_string());
+            }
+        };
         let child = Arc::new(Mutex::new(child));
         let (sender, receiver) = mpsc::channel::<Request>();
         let io_thread = thread::Builder::new()
@@ -129,7 +138,13 @@ impl WorkerRuntime {
             version: String::new(),
             admin_url: String::new(),
         };
-        let ping = runtime.request_line(r#"{"type":"ping"}"#, spawn_timeout)?;
+        let ping = match runtime.request_line(r#"{"type":"ping"}"#, spawn_timeout) {
+            Ok(ping) => ping,
+            Err(error) => {
+                runtime.stop();
+                return Err(format!("Go worker 握手失败：{error}"));
+            }
+        };
         if ping.kind != "pong" || ping.protocol_version != Some(crate::PROTOCOL_VERSION) {
             runtime.stop();
             return Err(format!(
@@ -146,14 +161,21 @@ impl WorkerRuntime {
         if !self.running {
             return Err("Go worker 已停止".to_string());
         }
-        let exited = self
-            .child
-            .lock()
-            .map_err(|_| "worker 进程锁已损坏".to_string())?
-            .try_wait()
-            .map_err(|error| format!("检查 worker 状态失败：{error}"))?;
+        let exited = {
+            let mut child = self
+                .child
+                .lock()
+                .map_err(|_| "worker 进程锁已损坏".to_string())?;
+            child
+                .try_wait()
+                .map_err(|error| format!("检查 worker 状态失败：{error}"))?
+        };
         if let Some(status) = exited {
-            self.stop();
+            self.running = false;
+            self.sender.take();
+            if let Some(thread) = self.io_thread.take() {
+                let _ = thread.join();
+            }
             return Err(format!("Go worker 已退出：{status}"));
         }
         let line = serde_json::to_string(message)
@@ -231,8 +253,12 @@ fn exchange_line(
         .map_err(|error| format!("刷新 worker stdin 失败：{error}"))?;
     let mut response = String::new();
     let read = reader
+        .take((MAX_WORKER_RESPONSE_BYTES + 1) as u64)
         .read_line(&mut response)
         .map_err(|error| format!("读取 worker 失败：{error}"))?;
+    if read > MAX_WORKER_RESPONSE_BYTES {
+        return Err("worker 返回行超过16MiB上限".to_string());
+    }
     if read == 0 {
         return Err("Go worker stdout 已关闭".to_string());
     }
