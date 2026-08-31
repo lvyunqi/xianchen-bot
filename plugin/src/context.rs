@@ -102,11 +102,11 @@ fn resolve_target_mention(
         }
         let target = match event_type {
             "GROUP_AT_MESSAGE_CREATE" | "GROUP_MESSAGE_CREATE" => {
-                optional_string(mention, "member_openid")?
-                    .or(optional_string(mention, "id")?)
+                optional_string(mention, "member_openid")?.or(optional_string(mention, "id")?)
             }
-            "C2C_MESSAGE_CREATE" => optional_string(mention, "user_openid")?
-                .or(optional_string(mention, "id")?),
+            "C2C_MESSAGE_CREATE" => {
+                optional_string(mention, "user_openid")?.or(optional_string(mention, "id")?)
+            }
             _ => None,
         };
         if let Some(target) = target {
@@ -151,7 +151,9 @@ fn valid_id(value: &str, label: &str) -> Result<String, String> {
         || value.chars().count() > MAX_ID_CHARS
         || value.chars().any(char::is_control)
     {
-        return Err(format!("{label} 必须是 1 到 {MAX_ID_CHARS} 个无控制字符的字符串"));
+        return Err(format!(
+            "{label} 必须是 1 到 {MAX_ID_CHARS} 个无控制字符的字符串"
+        ));
     }
     Ok(value.to_string())
 }
@@ -200,7 +202,10 @@ mod tests {
             }
         }));
         request.message_text = RString::from("结缘");
-        assert_eq!(resolve_inbound(&request).unwrap().text, "结缘 target-openid");
+        assert_eq!(
+            resolve_inbound(&request).unwrap().text,
+            "结缘 target-openid"
+        );
     }
 
     #[test]

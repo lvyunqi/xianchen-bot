@@ -254,10 +254,12 @@ fn exchange_line(
         .flush()
         .map_err(|error| format!("刷新 worker stdin 失败：{error}"))?;
     let mut response = String::new();
-    let read = reader
-        .take((MAX_WORKER_RESPONSE_BYTES + 1) as u64)
-        .read_line(&mut response)
-        .map_err(|error| format!("读取 worker 失败：{error}"))?;
+    let read = {
+        let mut limited = (&mut *reader).take((MAX_WORKER_RESPONSE_BYTES + 1) as u64);
+        limited
+            .read_line(&mut response)
+            .map_err(|error| format!("读取 worker 失败：{error}"))?
+    };
     if read > MAX_WORKER_RESPONSE_BYTES {
         return Err("worker 返回行超过16MiB上限".to_string());
     }

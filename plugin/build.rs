@@ -16,7 +16,11 @@ fn main() {
             source.display()
         )
     });
-    assert!(metadata.len() > 0, "Go worker 文件为空：{}", source.display());
+    assert!(
+        metadata.len() > 0,
+        "Go worker 文件为空：{}",
+        source.display()
+    );
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR")).join("xianchen-worker");
     fs::copy(&source, &output).unwrap_or_else(|error| {
         panic!(

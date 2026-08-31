@@ -269,8 +269,7 @@ fn recover_worker() -> Result<(), String> {
 }
 
 fn recover_worker_inner() -> Result<(), String> {
-    let launch = current_worker_launch()
-        .ok_or_else(|| "没有可用的 worker 启动配置".to_string())?;
+    let launch = current_worker_launch().ok_or_else(|| "没有可用的 worker 启动配置".to_string())?;
     let previous = {
         let _transition = runtime_transition_slot()
             .lock()
@@ -324,7 +323,11 @@ fn shutdown_runtime() {
 }
 
 pub fn diagnostic_text(config: &PluginConfig) -> String {
-    let markdown_state = if config.qq_official_markdown { "开启" } else { "关闭" };
+    let markdown_state = if config.qq_official_markdown {
+        "开启"
+    } else {
+        "关闭"
+    };
     let runtime = worker_slot().lock().ok();
     let worker_state = runtime
         .as_ref()
@@ -419,12 +422,8 @@ mod plugin {
         let Some(payload) = reply.result else {
             return InterceptorResponse::allow();
         };
-        let response_queued = message::queue_response(
-            request,
-            &inbound,
-            &payload,
-            config.qq_official_markdown,
-        );
+        let response_queued =
+            message::queue_response(request, &inbound, &payload, config.qq_official_markdown);
         message::queue_broadcasts(&inbound, &payload, config.qq_official_markdown);
         if !response_queued {
             return InterceptorResponse::allow();
