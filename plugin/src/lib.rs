@@ -5,7 +5,10 @@
 
 use std::sync::{OnceLock, RwLock};
 
-use abi_stable_host_api::{CommandRequest, CommandResponse, PluginConfigRequest, PluginConfigResult, PluginInitConfig, PluginInitResult};
+use abi_stable_host_api::{
+    CommandRequest, CommandResponse, PluginConfigRequest, PluginConfigResult,
+    PluginInitConfig, PluginInitResult,
+};
 use qimen_dynamic_plugin_derive::dynamic_plugin;
 use serde_json::Value;
 
