@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn invalid_types_and_unknown_fields_are_rejected() {
-        assert!(parse_config(r#"{"worker":[]}"#).is_err());
+        assert!(parse_config(r#"{"worker":{"enabled":"yes"}}"#).is_err());
         assert!(parse_config(r#"{"unknown":true}"#).is_err());
     }
 
