@@ -189,7 +189,6 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
 
 fn initialize(config: PluginInitConfig) -> Result<(), String> {
     begin_lifecycle()?;
-    SHUTDOWN_REQUESTED.store(false, Ordering::Release);
     let result = initialize_inner(config);
     end_lifecycle();
     result
@@ -207,12 +206,12 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
         spawn_timeout: Duration::from_secs(parsed.spawn_timeout_secs),
         io_timeout: Duration::from_secs(parsed.io_timeout_secs),
     });
-    replace_worker_launch(None);
-
     let previous = {
         let _transition = runtime_transition_slot()
             .lock()
             .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+        SHUTDOWN_REQUESTED.store(false, Ordering::Release);
+        replace_worker_launch(None);
         worker_slot()
             .lock()
             .map_err(|_| "worker 运行时锁已损坏".to_string())?
@@ -252,9 +251,9 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
             .lock()
             .map_err(|_| "worker 运行时锁已损坏".to_string())?;
         *slot = replacement;
+        replace_config(parsed);
+        replace_worker_launch(launch);
     }
-    replace_config(parsed);
-    replace_worker_launch(launch);
     Ok(())
 }
 
@@ -309,12 +308,13 @@ fn recover_worker_inner() -> Result<(), String> {
 }
 
 fn shutdown_runtime() {
-    SHUTDOWN_REQUESTED.store(true, Ordering::Release);
-    replace_worker_launch(None);
     let previous = {
         let Ok(_transition) = runtime_transition_slot().lock() else {
+            SHUTDOWN_REQUESTED.store(true, Ordering::Release);
             return;
         };
+        SHUTDOWN_REQUESTED.store(true, Ordering::Release);
+        replace_worker_launch(None);
         worker_slot().lock().ok().and_then(|mut slot| slot.take())
     };
     if let Some(mut previous) = previous {
