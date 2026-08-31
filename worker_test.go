@@ -30,6 +30,27 @@ func TestPlainTextResponse(t *testing.T) {
 	}
 }
 
+func TestGameResultReplyProjectsRichPayload(t *testing.T) {
+	reply, err := gameResultReply(service.GameResult{
+		Title: "状态", Content: "境界：炼气", MarkdownContent: "**境界**：炼气",
+		Actions: []string{"菜单"}, BroadcastContent: "世界公告",
+	})
+	if err != nil {
+		t.Fatalf("game result projection failed: %v", err)
+	}
+	if reply.Type != "reply" || !reply.Handled || reply.Result == nil {
+		t.Fatalf("unexpected projected reply: %+v", reply)
+	}
+	for _, want := range []string{"状态", "境界", "菜单"} {
+		if !strings.Contains(reply.Result.Markdown, want) && !strings.Contains(reply.Result.TextFallback, want) {
+			t.Fatalf("projected payload does not contain %q: %+v", want, reply.Result)
+		}
+	}
+	if reply.Result.Broadcast != "世界公告" {
+		t.Fatalf("broadcast was not projected: %+v", reply.Result)
+	}
+}
+
 func TestStdioLoopPingPong(t *testing.T) {
 	var output strings.Builder
 	err := runStdioLoop(strings.NewReader(strings.Join([]string{

@@ -95,7 +95,7 @@ fn official_markdown(payload: &GamePayload) -> Option<String> {
         ""
     };
     if title.is_empty() && body.is_empty() {
-        return None;
+        return (!payload.image_base64.trim().is_empty()).then(|| "图片已生成，请查看下一条消息。".to_string());
     }
     let mut sections = Vec::new();
     if !title.is_empty() {

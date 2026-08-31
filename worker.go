@@ -247,6 +247,8 @@ func gameResultReply(result service.GameResult) (OutboundReply, error) {
 			return OutboundReply{}, fmt.Errorf("读取状态图: %w", err)
 		}
 		payload.ImageBase64 = base64.StdEncoding.EncodeToString(image)
+		// ImageOnly 的本地临时路径只供 worker 读取，不跨进程暴露给插件。
+		payload.ImageURL = ""
 	}
 	return OutboundReply{Type: "reply", Handled: true, Result: &payload}, nil
 }
