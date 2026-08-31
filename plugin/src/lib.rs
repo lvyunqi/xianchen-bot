@@ -1,13 +1,18 @@
-//! 仙尘 QimenBot 动态插件（P0 骨架）。
+//! 仙尘 QimenBot 动态插件。
 //!
-//! 计划：P0 只提供插件身份、在线配置与诊断命令；
-//! P1 起引入 Go worker 子进程桥接（见 docs/qimenbot-migration-plan.md）。
+//! Rust 负责 QimenBot 边界与 Go worker 生命周期；游戏语义保留在 Go 内核。
 
-use std::sync::{OnceLock, RwLock};
+mod context;
+mod message;
+mod worker;
+
+use std::path::Path;
+use std::sync::{Mutex, OnceLock, RwLock};
+use std::time::Duration;
 
 use abi_stable_host_api::{
-    CommandRequest, CommandResponse, PluginConfigRequest, PluginConfigResult, PluginInitConfig,
-    PluginInitResult,
+    CommandRequest, CommandResponse, InterceptorRequest, InterceptorResponse, PluginConfigRequest,
+    PluginConfigResult, PluginInitConfig, PluginInitResult,
 };
 use qimen_dynamic_plugin_derive::dynamic_plugin;
 use serde::Deserialize;
@@ -28,7 +33,7 @@ pub struct PluginConfig {
 impl Default for PluginConfig {
     fn default() -> Self {
         Self {
-            worker_enabled: false,
+            worker_enabled: true,
             spawn_timeout_secs: 20,
             io_timeout_secs: 25,
             data_subdir: "xianchen".to_string(),
@@ -56,7 +61,7 @@ struct WorkerConfigDocument {
 impl Default for WorkerConfigDocument {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             spawn_timeout_secs: 20,
             io_timeout_secs: 25,
             data_subdir: "xianchen".to_string(),
@@ -79,9 +84,19 @@ impl Default for MessageConfigDocument {
 }
 
 static CONFIG: OnceLock<RwLock<PluginConfig>> = OnceLock::new();
+static WORKER: OnceLock<Mutex<Option<worker::WorkerRuntime>>> = OnceLock::new();
+static RUNTIME_TRANSITION: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn config_slot() -> &'static RwLock<PluginConfig> {
     CONFIG.get_or_init(|| RwLock::new(PluginConfig::default()))
+}
+
+fn worker_slot() -> &'static Mutex<Option<worker::WorkerRuntime>> {
+    WORKER.get_or_init(|| Mutex::new(None))
+}
+
+fn runtime_transition_slot() -> &'static Mutex<()> {
+    RUNTIME_TRANSITION.get_or_init(|| Mutex::new(()))
 }
 
 fn current_config() -> PluginConfig {
@@ -132,24 +147,67 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
     })
 }
 
-/// 诊断命令文本：P0 阶段反映插件自身状态（尚无 worker 桥接）。
+fn initialize(config: PluginInitConfig) -> Result<(), String> {
+    let _transition = runtime_transition_slot()
+        .lock()
+        .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+    let parsed = parse_config(config.config_json.as_str())?;
+    let data_dir = config.data_dir.as_str().trim();
+    if parsed.worker_enabled && data_dir.is_empty() {
+        return Err("QimenBot 未提供 data_dir，无法启动 Go worker".to_string());
+    }
+    let mut slot = worker_slot()
+        .lock()
+        .map_err(|_| "worker 运行时锁已损坏".to_string())?;
+    if let Some(mut previous) = slot.take() {
+        previous.stop();
+    }
+    let replacement = if parsed.worker_enabled {
+        Some(worker::WorkerRuntime::start(
+            Path::new(data_dir),
+            &parsed.data_subdir,
+            Duration::from_secs(parsed.spawn_timeout_secs),
+            Duration::from_secs(parsed.io_timeout_secs),
+        )?)
+    } else {
+        None
+    };
+    *slot = replacement;
+    replace_config(parsed);
+    Ok(())
+}
+
+fn shutdown_runtime() {
+    let Ok(_transition) = runtime_transition_slot().lock() else {
+        return;
+    };
+    if let Ok(mut slot) = worker_slot().lock()
+        && let Some(mut runtime) = slot.take()
+    {
+        runtime.stop();
+    }
+}
+
 pub fn diagnostic_text(config: &PluginConfig) -> String {
-    let markdown_state = if config.qq_official_markdown {
-        "开启"
-    } else {
-        "关闭"
-    };
-    let worker_state = if config.worker_enabled {
-        format!(
-            "已启用（P1 接入子进程，data_subdir={}, spawn>={}s, io>={}s）",
-            config.data_subdir, config.spawn_timeout_secs, config.io_timeout_secs
-        )
-    } else {
-        "未启用（P0 骨架阶段）".to_string()
-    };
+    let markdown_state = if config.qq_official_markdown { "开启" } else { "关闭" };
+    let runtime = worker_slot().lock().ok();
+    let worker_state = runtime
+        .as_ref()
+        .and_then(|slot| slot.as_ref())
+        .filter(|worker| worker.is_running())
+        .map(|worker| {
+            format!(
+                "运行中（worker={}，后台={}）",
+                if worker.version.is_empty() { "未知" } else { &worker.version },
+                if worker.admin_url.is_empty() { "未提供" } else { &worker.admin_url }
+            )
+        })
+        .unwrap_or_else(|| {
+            if config.worker_enabled { "已启用但未运行".to_string() } else { "已停用".to_string() }
+        });
     format!(
-        "仙尘插件 v{}（P0 骨架）\n协议版本：{}\nGo 内核桥接：{}\nMarkdown 渲染：{}\n迁移方案：docs/qimenbot-migration-plan.md",
-        PLUGIN_VERSION, PROTOCOL_VERSION, worker_state, markdown_state
+        "仙尘插件 v{}（P1 桥接）\n协议版本：{}\nGo 内核桥接：{}\nMarkdown 渲染：{}\n数据目录：{}",
+        PLUGIN_VERSION, PROTOCOL_VERSION, worker_state, markdown_state, config.data_subdir
     )
 }
 
@@ -167,11 +225,8 @@ mod plugin {
 
     #[init]
     fn init(config: PluginInitConfig) -> PluginInitResult {
-        match parse_config(config.config_json.as_str()) {
-            Ok(parsed) => {
-                replace_config(parsed);
-                PluginInitResult::ok()
-            }
+        match initialize(config) {
+            Ok(()) => PluginInitResult::ok(),
             Err(error) => PluginInitResult::err(&error),
         }
     }
@@ -182,6 +237,37 @@ mod plugin {
             Ok(_) => PluginConfigResult::ok(),
             Err(error) => PluginConfigResult::err(&error),
         }
+    }
+
+    #[pre_handle]
+    fn intercept(request: &InterceptorRequest) -> InterceptorResponse {
+        let config = current_config();
+        if !config.worker_enabled {
+            return InterceptorResponse::allow();
+        }
+        let Ok(inbound) = context::resolve_inbound(request) else {
+            return InterceptorResponse::allow();
+        };
+        let Ok(mut slot) = worker_slot().lock() else {
+            return InterceptorResponse::allow();
+        };
+        let Some(runtime) = slot.as_mut() else {
+            return InterceptorResponse::allow();
+        };
+        let Ok(reply) = runtime.request(&inbound) else {
+            return InterceptorResponse::allow();
+        };
+        if reply.kind != "reply" || !reply.handled {
+            return InterceptorResponse::allow();
+        }
+        let Some(payload) = reply.result else {
+            return InterceptorResponse::allow();
+        };
+        if !message::queue_response(request, &inbound, &payload, config.qq_official_markdown) {
+            return InterceptorResponse::allow();
+        }
+        message::queue_broadcasts(&inbound, &payload, config.qq_official_markdown);
+        InterceptorResponse::block()
     }
 
     #[command(
@@ -197,8 +283,7 @@ mod plugin {
 
     #[shutdown]
     fn shutdown() {
-        // P0 无后台线程与子进程；P1 起在此停止并 join worker IO 线程、
-        // 杀死 xianchen-worker 子进程后再返回。
+        shutdown_runtime();
     }
 }
 
@@ -253,10 +338,10 @@ mod tests {
     }
 
     #[test]
-    fn diagnostic_text_reflects_p0_state() {
+    fn diagnostic_text_reflects_p1_state() {
         let text = diagnostic_text(&PluginConfig::default());
-        assert!(text.contains("P0"));
-        assert!(text.contains("未启用"));
+        assert!(text.contains("P1"));
+        assert!(text.contains("已启用但未运行"));
         assert!(text.contains(PLUGIN_VERSION));
     }
 }

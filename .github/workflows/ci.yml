@@ -26,6 +26,10 @@ jobs:
         run: go vet ./...
       - name: go test
         run: go test ./...
+      - name: build embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -o plugin/embedded/xianchen-worker .
 
   rust-check:
     name: Rust 插件检查
@@ -38,12 +42,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: plugin
+      - name: prepare embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -o plugin/embedded/xianchen-worker .
+        working-directory: ..
       - name: cargo fmt
         run: cargo fmt --all -- --check
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
       - name: cargo test
         run: cargo test --all-targets
+      - name: cargo build release
+        run: cargo build --release

@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "default": {
     "worker": {
-      "enabled": false,
+      "enabled": true,
       "spawn_timeout_secs": 20,
       "io_timeout_secs": 25,
       "data_subdir": "xianchen"
@@ -25,7 +25,7 @@
           "title": "启用内核桥接",
           "description": "P1 起生效：启动内嵌的 xianchen-worker 子进程并转发消息。",
           "type": "boolean",
-          "default": false
+          "default": true
         },
         "spawn_timeout_secs": {
           "title": "启动超时（秒）",

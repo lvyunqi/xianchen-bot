@@ -55,14 +55,17 @@ type OutboundReply struct {
 
 // GamePayload 是 service.GameResult 的协议投影：发送动作全部交给 Rust 侧执行。
 type GamePayload struct {
-	Title        string   `json:"title"`
-	Content      string   `json:"content"`
-	Markdown     string   `json:"markdown"`
-	TextFallback string   `json:"text_fallback"`
-	ImageBase64  string   `json:"image_base64,omitempty"`
-	ImageOnly    bool     `json:"image_only"`
-	Actions      []string `json:"actions,omitempty"`
-	Broadcast    string   `json:"broadcast,omitempty"`
+	Title            string   `json:"title"`
+	Content          string   `json:"content"`
+	Markdown        string   `json:"markdown"`
+	MarkdownContent string   `json:"markdown_content,omitempty"`
+	TextFallback    string   `json:"text_fallback"`
+	ImageURL        string   `json:"image_url,omitempty"`
+	ImageBase64      string   `json:"image_base64,omitempty"`
+	ImageOnly        bool     `json:"image_only"`
+	Actions          []string `json:"actions,omitempty"`
+	Broadcast        string   `json:"broadcast,omitempty"`
+	BroadcastTargets []string `json:"broadcast_targets,omitempty"`
 }
 
 func main() {
@@ -100,18 +103,6 @@ func main() {
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, err)
 	os.Exit(1)
-}
-
-// startHostWatcher 看门狗：宿主插件进程退出后 worker 自行退出，避免孤儿进程。
-func startHostWatcher(hostPID uint32) {
-	go func() {
-		process, err := os.FindProcess(int(hostPID))
-		if err != nil {
-			return
-		}
-		_, _ = process.Wait()
-		os.Exit(0)
-	}()
 }
 
 // initRuntime 初始化数据目录、数据库、游戏引擎与管理后台（幂等）。
@@ -181,6 +172,29 @@ func processInbound(message InboundMessage) (OutboundReply, error) {
 	if utility != nil {
 		return gameResultReply(*utility)
 	}
+	if gmCommand, ok := service.ParseGMCommand(message.Text); ok {
+		if groupID != "私信" {
+			allowed, status, err := game.GroupAccessAllowed(groupID)
+			if err != nil {
+				return OutboundReply{}, err
+			}
+			if !allowed && gmCommand.Name != "群审核" {
+				blocked := game.GroupAccessBlockedResult(groupID, status)
+				return gameResultReply(blocked)
+			}
+			if allowed {
+				rememberKnownGroup(groupID)
+			}
+		}
+		result, handled, err := game.ExecuteGM(message.SenderID, gmCommand)
+		if err != nil {
+			return gameResultReply(service.GameResult{Title: "神令未成", Content: err.Error()})
+		}
+		if !handled {
+			return OutboundReply{Type: "reply", Handled: false}, nil
+		}
+		return gameResultReply(result)
+	}
 	command, ok := parseInboundCommand(game, message.SenderID, message.Text)
 	if !ok {
 		return OutboundReply{Type: "reply", Handled: false}, nil
@@ -219,8 +233,12 @@ func parseInboundCommand(game *service.Game, accountID, text string) (handler.Pa
 func gameResultReply(result service.GameResult) (OutboundReply, error) {
 	payload := GamePayload{
 		Title: result.Title, Content: result.Content, Markdown: result.Markdown(),
-		TextFallback: result.Text(), ImageOnly: result.ImageOnly, Actions: result.Actions,
+		MarkdownContent: result.MarkdownContent, TextFallback: result.Text(),
+		ImageURL: result.ImageURL, ImageOnly: result.ImageOnly, Actions: result.Actions,
 		Broadcast: result.BroadcastContent,
+	}
+	if strings.TrimSpace(result.BroadcastContent) != "" {
+		payload.BroadcastTargets = knownGroups()
 	}
 	if result.ImageOnly && strings.TrimSpace(result.ImageURL) != "" {
 		image, err := os.ReadFile(result.ImageURL)
