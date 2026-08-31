@@ -15,6 +15,10 @@ type statusFont struct {
 	Family string
 }
 
+func statusImageRenderingSupported() bool {
+	return true
+}
+
 type gdiBitmapInfoHeader struct {
 	Size          uint32
 	Width         int32

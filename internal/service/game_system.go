@@ -127,7 +127,7 @@ func (g *Game) runtimeOverview() (GameResult, bool, error) {
 		messageMode = "QQ原生Markdown（失败自动回退文字）"
 	}
 	statusMode := "完整文字模式"
-	if g.settingBool("display.status_image_mode", true) {
+	if g.settingBool("display.status_image_mode", true) && statusImageRenderingSupported() {
 		statusMode = "单张属性图模式"
 	}
 	started := g.startedAt

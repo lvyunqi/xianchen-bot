@@ -1124,6 +1124,13 @@ func TestPrimaryPanelsNotGloballyPaginated(t *testing.T) {
 func TestStatusImageModeRendersLiveAttributesAndCanSwitchToText(t *testing.T) {
 	game, store := testGame(t)
 	player := registerPlayer(t, game, "status-image-user", "照海真君")
+	if !statusImageRenderingSupported() {
+		result, handled, err := game.Execute("group", player.AccountID, mustParse(t, "状态"))
+		if err != nil || !handled || result.ImageOnly || strings.TrimSpace(result.Content) == "" {
+			t.Fatalf("non-Windows status fallback: handled=%v err=%v result=%+v", handled, err, result)
+		}
+		return
+	}
 	avatarPath := strings.TrimSpace(os.Getenv("XIANCHEN_STATUS_AVATAR"))
 	usingFixtureAvatar := avatarPath == ""
 	if usingFixtureAvatar {

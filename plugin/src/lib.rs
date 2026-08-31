@@ -6,8 +6,8 @@
 use std::sync::{OnceLock, RwLock};
 
 use abi_stable_host_api::{
-    CommandRequest, CommandResponse, PluginConfigRequest, PluginConfigResult,
-    PluginInitConfig, PluginInitResult,
+    CommandRequest, CommandResponse, PluginConfigRequest, PluginConfigResult, PluginInitConfig,
+    PluginInitResult,
 };
 use qimen_dynamic_plugin_derive::dynamic_plugin;
 use serde::Deserialize;
@@ -85,7 +85,10 @@ fn config_slot() -> &'static RwLock<PluginConfig> {
 }
 
 fn current_config() -> PluginConfig {
-    config_slot().read().map(|slot| slot.clone()).unwrap_or_default()
+    config_slot()
+        .read()
+        .map(|slot| slot.clone())
+        .unwrap_or_default()
 }
 
 fn replace_config(config: PluginConfig) {
@@ -100,8 +103,8 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
     if trimmed.is_empty() {
         return Ok(PluginConfig::default());
     }
-    let document: ConfigDocument = serde_json::from_str(trimmed)
-        .map_err(|error| format!("插件配置无效: {error}"))?;
+    let document: ConfigDocument =
+        serde_json::from_str(trimmed).map_err(|error| format!("插件配置无效: {error}"))?;
     if !(5..=120).contains(&document.worker.spawn_timeout_secs) {
         return Err("worker.spawn_timeout_secs 必须在 5 到 120 秒之间".to_string());
     }
@@ -131,7 +134,11 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
 
 /// 诊断命令文本：P0 阶段反映插件自身状态（尚无 worker 桥接）。
 pub fn diagnostic_text(config: &PluginConfig) -> String {
-    let markdown_state = if config.qq_official_markdown { "开启" } else { "关闭" };
+    let markdown_state = if config.qq_official_markdown {
+        "开启"
+    } else {
+        "关闭"
+    };
     let worker_state = if config.worker_enabled {
         format!(
             "已启用（P1 接入子进程，data_subdir={}, spawn>={}s, io>={}s）",

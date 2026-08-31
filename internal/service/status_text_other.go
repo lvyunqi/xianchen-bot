@@ -10,6 +10,10 @@ import (
 
 type statusFont struct{}
 
+func statusImageRenderingSupported() bool {
+	return false
+}
+
 func loadStatusFont(string) (*statusFont, error) {
 	return nil, fmt.Errorf("状态图片文字渲染仅支持Windows运行环境")
 }

@@ -1265,7 +1265,7 @@ func (g *Game) status(player *model.Player) (GameResult, error) {
 		return GameResult{}, err
 	}
 	displayPlayer := g.playerWithActiveSkillStats(player)
-	if g.settingBool("display.status_image_mode", true) {
+	if g.settingBool("display.status_image_mode", true) && statusImageRenderingSupported() {
 		path, err := g.renderStatusImage(&displayPlayer, stamina, staminaMaximum)
 		if err != nil {
 			return GameResult{}, err

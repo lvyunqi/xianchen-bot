@@ -64,8 +64,12 @@ func TestStdioLoopPingPong(t *testing.T) {
 	if !strings.Contains(lines[2], "未知消息类型") {
 		t.Fatalf("expected unknown-type reply, got %q", lines[2])
 	}
-	if strings.TrimSpace(lines[3]) != "{\"type\":\"bye\"}" {
-		t.Fatalf("expected bye reply, got %q", lines[3])
+	var bye OutboundReply
+	if err := json.Unmarshal([]byte(lines[3]), &bye); err != nil {
+		t.Fatalf("bye reply is not valid JSON: %v", err)
+	}
+	if bye.Type != "bye" {
+		t.Fatalf("expected bye reply, got %+v", bye)
 	}
 }
 
