@@ -5,9 +5,10 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-env-changed=XIANCHEN_WORKER_BIN");
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| env::consts::OS.to_string());
     let source = env::var_os("XIANCHEN_WORKER_BIN")
         .map(PathBuf::from)
-        .unwrap_or_else(|| manifest.join("embedded").join(worker_file_name()));
+        .unwrap_or_else(|| manifest.join("embedded").join(worker_file_name(&target_os)));
     println!("cargo:rerun-if-changed={}", source.display());
     let metadata = fs::metadata(&source).unwrap_or_else(|error| {
         panic!(
@@ -26,8 +27,8 @@ fn main() {
     });
 }
 
-fn worker_file_name() -> &'static str {
-    if cfg!(windows) {
+fn worker_file_name(target_os: &str) -> &'static str {
+    if target_os == "windows" {
         "xianchen-worker.exe"
     } else {
         "xianchen-worker"

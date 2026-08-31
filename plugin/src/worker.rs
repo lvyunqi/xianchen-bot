@@ -227,12 +227,14 @@ impl WorkerRuntime {
                 response: response_tx,
             })
             .map_err(|_| "Go worker IO 线程已退出".to_string())?;
-        response_rx.recv_timeout(timeout).map_err(|error| match error {
-            mpsc::RecvTimeoutError::Timeout => {
-                format!("Go worker 响应超时（{} 秒）", timeout.as_secs())
-            }
-            mpsc::RecvTimeoutError::Disconnected => "Go worker IO 线程已断开".to_string(),
-        })?
+        response_rx
+            .recv_timeout(timeout)
+            .map_err(|error| match error {
+                mpsc::RecvTimeoutError::Timeout => {
+                    format!("Go worker 响应超时（{} 秒）", timeout.as_secs())
+                }
+                mpsc::RecvTimeoutError::Disconnected => "Go worker IO 线程已断开".to_string(),
+            })?
     }
 }
 
@@ -284,8 +286,7 @@ fn extract_worker(runtime_dir: &Path) -> Result<PathBuf, String> {
             .map_err(|error| format!("写入 worker 临时文件失败：{error}"))?;
         set_executable(&temporary)?;
         if executable.exists() {
-            fs::remove_file(&executable)
-                .map_err(|error| format!("替换旧 worker 失败：{error}"))?;
+            fs::remove_file(&executable).map_err(|error| format!("替换旧 worker 失败：{error}"))?;
         }
         fs::rename(&temporary, &executable)
             .map_err(|error| format!("安装 worker 失败：{error}"))?;

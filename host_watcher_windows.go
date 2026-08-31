@@ -36,11 +36,11 @@ func startHostWatcher(hostPID uint32) {
 }
 
 func windowsProcessAlive(pid uint32) bool {
-	handle, _, _ := openProcessProc.Call(processQueryLimitedInformation, 0, uintptr(pid))
+	handle, _, callErr := openProcessProc.Call(processQueryLimitedInformation, 0, uintptr(pid))
 	if handle == 0 {
-		// Access denied means the PID exists but is not queryable by this token.
-		// Treat it as alive; the Rust owner still performs normal shutdown.
-		return true
+		// Only access denial proves that a non-queryable process may still exist;
+		// invalid or already-exited PIDs must let the worker terminate.
+		return callErr == syscall.ERROR_ACCESS_DENIED
 	}
 	defer closeHandleProc.Call(handle)
 	var exitCode uint32

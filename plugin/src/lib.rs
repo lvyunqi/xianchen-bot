@@ -6,7 +6,8 @@ mod context;
 mod message;
 mod worker;
 
-use std::path::Path;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, RwLock};
 use std::time::Duration;
 
@@ -83,9 +84,20 @@ impl Default for MessageConfigDocument {
     }
 }
 
+#[derive(Clone, Debug)]
+struct WorkerLaunch {
+    data_root: PathBuf,
+    data_subdir: String,
+    spawn_timeout: Duration,
+    io_timeout: Duration,
+}
+
 static CONFIG: OnceLock<RwLock<PluginConfig>> = OnceLock::new();
 static WORKER: OnceLock<Mutex<Option<worker::WorkerRuntime>>> = OnceLock::new();
+static WORKER_LAUNCH: OnceLock<RwLock<Option<WorkerLaunch>>> = OnceLock::new();
 static RUNTIME_TRANSITION: OnceLock<Mutex<()>> = OnceLock::new();
+static LIFECYCLE_BUSY: AtomicBool = AtomicBool::new(false);
+static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 fn config_slot() -> &'static RwLock<PluginConfig> {
     CONFIG.get_or_init(|| RwLock::new(PluginConfig::default()))
@@ -97,6 +109,34 @@ fn worker_slot() -> &'static Mutex<Option<worker::WorkerRuntime>> {
 
 fn runtime_transition_slot() -> &'static Mutex<()> {
     RUNTIME_TRANSITION.get_or_init(|| Mutex::new(()))
+}
+
+fn worker_launch_slot() -> &'static RwLock<Option<WorkerLaunch>> {
+    WORKER_LAUNCH.get_or_init(|| RwLock::new(None))
+}
+
+fn replace_worker_launch(launch: Option<WorkerLaunch>) {
+    if let Ok(mut slot) = worker_launch_slot().write() {
+        *slot = launch;
+    }
+}
+
+fn current_worker_launch() -> Option<WorkerLaunch> {
+    worker_launch_slot()
+        .read()
+        .ok()
+        .and_then(|slot| slot.clone())
+}
+
+fn begin_lifecycle() -> Result<(), String> {
+    LIFECYCLE_BUSY
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .map(|_| ())
+        .map_err(|_| "插件运行时正在切换".to_string())
+}
+
+fn end_lifecycle() {
+    LIFECYCLE_BUSY.store(false, Ordering::Release);
 }
 
 fn current_config() -> PluginConfig {
@@ -148,43 +188,138 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
 }
 
 fn initialize(config: PluginInitConfig) -> Result<(), String> {
-    let _transition = runtime_transition_slot()
-        .lock()
-        .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+    begin_lifecycle()?;
+    SHUTDOWN_REQUESTED.store(false, Ordering::Release);
+    let result = initialize_inner(config);
+    end_lifecycle();
+    result
+}
+
+fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
     let parsed = parse_config(config.config_json.as_str())?;
     let data_dir = config.data_dir.as_str().trim();
     if parsed.worker_enabled && data_dir.is_empty() {
         return Err("QimenBot 未提供 data_dir，无法启动 Go worker".to_string());
     }
+    let launch = parsed.worker_enabled.then(|| WorkerLaunch {
+        data_root: PathBuf::from(data_dir),
+        data_subdir: parsed.data_subdir.clone(),
+        spawn_timeout: Duration::from_secs(parsed.spawn_timeout_secs),
+        io_timeout: Duration::from_secs(parsed.io_timeout_secs),
+    });
+    replace_worker_launch(None);
+
+    let previous = {
+        let _transition = runtime_transition_slot()
+            .lock()
+            .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+        worker_slot()
+            .lock()
+            .map_err(|_| "worker 运行时锁已损坏".to_string())?
+            .take()
+    };
+    if let Some(mut previous) = previous {
+        previous.stop();
+    }
+
+    // 启动和握手可能触发磁盘初始化，不能持有 worker_slot 或切换锁。
+    let replacement = match launch.as_ref() {
+        Some(launch) => Some(worker::WorkerRuntime::start(
+            &launch.data_root,
+            &launch.data_subdir,
+            launch.spawn_timeout,
+            launch.io_timeout,
+        )?),
+        None => None,
+    };
+    if SHUTDOWN_REQUESTED.load(Ordering::Acquire) {
+        if let Some(mut replacement) = replacement {
+            replacement.stop();
+        }
+        return Err("插件在 worker 启动期间收到关闭请求".to_string());
+    }
+    {
+        let _transition = runtime_transition_slot()
+            .lock()
+            .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+        if SHUTDOWN_REQUESTED.load(Ordering::Acquire) {
+            if let Some(mut replacement) = replacement {
+                replacement.stop();
+            }
+            return Err("插件在 worker 安装期间收到关闭请求".to_string());
+        }
+        let mut slot = worker_slot()
+            .lock()
+            .map_err(|_| "worker 运行时锁已损坏".to_string())?;
+        *slot = replacement;
+    }
+    replace_config(parsed);
+    replace_worker_launch(launch);
+    Ok(())
+}
+
+fn recover_worker() -> Result<(), String> {
+    if SHUTDOWN_REQUESTED.load(Ordering::Acquire) {
+        return Err("插件正在关闭".to_string());
+    }
+    begin_lifecycle()?;
+    let result = recover_worker_inner();
+    end_lifecycle();
+    result
+}
+
+fn recover_worker_inner() -> Result<(), String> {
+    let launch = current_worker_launch()
+        .ok_or_else(|| "没有可用的 worker 启动配置".to_string())?;
+    let previous = {
+        let _transition = runtime_transition_slot()
+            .lock()
+            .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+        worker_slot()
+            .lock()
+            .map_err(|_| "worker 运行时锁已损坏".to_string())?
+            .take()
+    };
+    if let Some(mut previous) = previous {
+        previous.stop();
+    }
+    let replacement = worker::WorkerRuntime::start(
+        &launch.data_root,
+        &launch.data_subdir,
+        launch.spawn_timeout.min(Duration::from_secs(20)),
+        launch.io_timeout,
+    )?;
+    if SHUTDOWN_REQUESTED.load(Ordering::Acquire) {
+        let mut replacement = replacement;
+        replacement.stop();
+        return Err("插件在 worker 恢复期间收到关闭请求".to_string());
+    }
+    let _transition = runtime_transition_slot()
+        .lock()
+        .map_err(|_| "插件运行时切换锁已损坏".to_string())?;
+    if SHUTDOWN_REQUESTED.load(Ordering::Acquire) {
+        let mut replacement = replacement;
+        replacement.stop();
+        return Err("插件在 worker 安装期间收到关闭请求".to_string());
+    }
     let mut slot = worker_slot()
         .lock()
         .map_err(|_| "worker 运行时锁已损坏".to_string())?;
-    if let Some(mut previous) = slot.take() {
-        previous.stop();
-    }
-    let replacement = if parsed.worker_enabled {
-        Some(worker::WorkerRuntime::start(
-            Path::new(data_dir),
-            &parsed.data_subdir,
-            Duration::from_secs(parsed.spawn_timeout_secs),
-            Duration::from_secs(parsed.io_timeout_secs),
-        )?)
-    } else {
-        None
-    };
-    *slot = replacement;
-    replace_config(parsed);
+    *slot = Some(replacement);
     Ok(())
 }
 
 fn shutdown_runtime() {
-    let Ok(_transition) = runtime_transition_slot().lock() else {
-        return;
+    SHUTDOWN_REQUESTED.store(true, Ordering::Release);
+    replace_worker_launch(None);
+    let previous = {
+        let Ok(_transition) = runtime_transition_slot().lock() else {
+            return;
+        };
+        worker_slot().lock().ok().and_then(|mut slot| slot.take())
     };
-    if let Ok(mut slot) = worker_slot().lock()
-        && let Some(mut runtime) = slot.take()
-    {
-        runtime.stop();
+    if let Some(mut previous) = previous {
+        previous.stop();
     }
 }
 
@@ -198,12 +333,24 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
         .map(|worker| {
             format!(
                 "运行中（worker={}，后台={}）",
-                if worker.version.is_empty() { "未知" } else { &worker.version },
-                if worker.admin_url.is_empty() { "未提供" } else { &worker.admin_url }
+                if worker.version.is_empty() {
+                    "未知"
+                } else {
+                    &worker.version
+                },
+                if worker.admin_url.is_empty() {
+                    "未提供"
+                } else {
+                    &worker.admin_url
+                }
             )
         })
         .unwrap_or_else(|| {
-            if config.worker_enabled { "已启用但未运行".to_string() } else { "已停用".to_string() }
+            if config.worker_enabled {
+                "已启用但未运行".to_string()
+            } else {
+                "已停用".to_string()
+            }
         });
     format!(
         "仙尘插件 v{}（P1 桥接）\n协议版本：{}\nGo 内核桥接：{}\nMarkdown 渲染：{}\n数据目录：{}",
@@ -242,19 +389,28 @@ mod plugin {
     #[pre_handle]
     fn intercept(request: &InterceptorRequest) -> InterceptorResponse {
         let config = current_config();
-        if !config.worker_enabled {
+        if !config.worker_enabled
+            || LIFECYCLE_BUSY.load(Ordering::Acquire)
+            || SHUTDOWN_REQUESTED.load(Ordering::Acquire)
+        {
             return InterceptorResponse::allow();
         }
         let Ok(inbound) = context::resolve_inbound(request) else {
             return InterceptorResponse::allow();
         };
-        let Ok(mut slot) = worker_slot().lock() else {
-            return InterceptorResponse::allow();
+        let result = {
+            let Ok(mut slot) = worker_slot().lock() else {
+                return InterceptorResponse::allow();
+            };
+            if !matches!(slot.as_ref(), Some(runtime) if runtime.is_running()) {
+                drop(slot);
+                let _ = recover_worker();
+                return InterceptorResponse::allow();
+            }
+            slot.as_mut().expect("worker 状态已检查").request(&inbound)
         };
-        let Some(runtime) = slot.as_mut() else {
-            return InterceptorResponse::allow();
-        };
-        let Ok(reply) = runtime.request(&inbound) else {
+        let Ok(reply) = result else {
+            // 超时消息立即放行；下一条消息再恢复，避免超过宿主回调预算。
             return InterceptorResponse::allow();
         };
         if reply.kind != "reply" || !reply.handled {
@@ -263,10 +419,16 @@ mod plugin {
         let Some(payload) = reply.result else {
             return InterceptorResponse::allow();
         };
-        if !message::queue_response(request, &inbound, &payload, config.qq_official_markdown) {
+        let response_queued = message::queue_response(
+            request,
+            &inbound,
+            &payload,
+            config.qq_official_markdown,
+        );
+        message::queue_broadcasts(&inbound, &payload, config.qq_official_markdown);
+        if !response_queued {
             return InterceptorResponse::allow();
         }
-        message::queue_broadcasts(&inbound, &payload, config.qq_official_markdown);
         InterceptorResponse::block()
     }
 

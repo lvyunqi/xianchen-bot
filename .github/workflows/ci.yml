@@ -39,7 +39,7 @@ jobs:
         working-directory: plugin
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.89.0
         with:
           components: rustfmt, clippy
       - uses: actions/setup-go@v5
@@ -72,4 +72,37 @@ jobs:
         with:
           name: xianchen-x86_64-unknown-linux-gnu
           path: plugin/dist
+          if-no-files-found: error
+
+  build-windows:
+    name: Windows x64 产物
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: taiki-e/install-action@cargo-xwin
+      - name: build Windows worker
+        run: |
+          mkdir -p plugin/embedded
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o plugin/embedded/xianchen-worker.exe .
+      - name: build Windows plugin
+        working-directory: plugin
+        run: cargo xwin build --release --target x86_64-pc-windows-msvc
+      - name: verify Windows artifacts
+        run: |
+          mkdir -p plugin/dist/windows
+          cp plugin/target/x86_64-pc-windows-msvc/release/qimen_dynamic_plugin_xianchen.dll plugin/dist/windows/
+          cp plugin/embedded/xianchen-worker.exe plugin/dist/windows/
+          file plugin/dist/windows/*
+          sha256sum plugin/dist/windows/* | tee plugin/dist/windows/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xianchen-x86_64-pc-windows-msvc
+          path: plugin/dist/windows
           if-no-files-found: error

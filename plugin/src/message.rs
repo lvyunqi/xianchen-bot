@@ -40,9 +40,11 @@ pub fn queue_broadcasts(inbound: &InboundMessage, payload: &GamePayload, markdow
     };
     for group_id in &payload.broadcast_targets {
         if !group_id.trim().is_empty() {
-            let _accepted = BotApi::for_account(&inbound.account_id)
-                .send_rich("group", group_id, "{}", &segments)
-                .is_accepted();
+            let status = BotApi::for_account(&inbound.account_id)
+                .send_rich("group", group_id, "{}", &segments);
+            if !status.is_accepted() {
+                eprintln!("仙尘全区通报入队失败");
+            }
         }
     }
 }
@@ -80,7 +82,19 @@ fn text_segment(payload: &GamePayload) -> Option<String> {
     } else {
         payload.title.trim()
     };
-    (!text.is_empty()).then(|| json!([{"type":"text","data":{"text":text}}]).to_string())
+    let mut segments = Vec::new();
+    if !text.is_empty() {
+        segments.push(json!({"type":"text","data":{"text":text}}));
+    }
+    if is_https_url(payload.image_url.trim()) {
+        segments.push(json!({"type":"image","data":{"file":payload.image_url.trim()}}));
+    } else if !payload.image_base64.trim().is_empty() && segments.is_empty() {
+        segments.push(json!({
+            "type":"text",
+            "data":{"text":"图片已生成，请查看下一条消息。"}
+        }));
+    }
+    (!segments.is_empty()).then(|| Value::Array(segments).to_string())
 }
 
 fn official_markdown(payload: &GamePayload) -> Option<String> {
@@ -95,7 +109,8 @@ fn official_markdown(payload: &GamePayload) -> Option<String> {
         ""
     };
     if title.is_empty() && body.is_empty() {
-        return (!payload.image_base64.trim().is_empty()).then(|| "图片已生成，请查看下一条消息。".to_string());
+        return (!payload.image_base64.trim().is_empty())
+            .then(|| "图片已生成，请查看下一条消息。".to_string());
     }
     let mut sections = Vec::new();
     if !title.is_empty() {
@@ -106,7 +121,7 @@ fn official_markdown(payload: &GamePayload) -> Option<String> {
     } else if !payload.image_base64.trim().is_empty() {
         sections.push("图片已生成，请查看下一条消息。".to_string());
     }
-    if !payload.image_url.trim().is_empty() && is_http_url(payload.image_url.trim()) {
+    if !payload.image_url.trim().is_empty() && is_https_url(payload.image_url.trim()) {
         sections.insert(
             1.min(sections.len()),
             format!("![#250px #100px]({})", payload.image_url.trim()),
@@ -125,8 +140,8 @@ fn escape_heading(value: &str) -> String {
         .replace('#', "\\#")
 }
 
-fn is_http_url(value: &str) -> bool {
-    value.starts_with("https://") || value.starts_with("http://")
+fn is_https_url(value: &str) -> bool {
+    value.starts_with("https://")
 }
 
 fn strip_legacy_inline_commands(value: &str) -> String {
@@ -242,6 +257,25 @@ mod tests {
     }
 
     #[test]
+    fn text_reply_keeps_https_image_and_rejects_http_markdown() {
+        let payload = GamePayload {
+            title: "状态".to_string(),
+            image_url: "https://example.com/status.png".to_string(),
+            ..GamePayload::default()
+        };
+        let text = response_segments(&payload, false).unwrap();
+        assert!(text.contains("image"));
+        assert!(text.contains("https://example.com/status.png"));
+
+        let insecure = GamePayload {
+            title: "状态".to_string(),
+            image_url: "http://example.com/status.png".to_string(),
+            ..GamePayload::default()
+        };
+        assert!(!official_markdown(&insecure).unwrap().contains("http://"));
+    }
+
+    #[test]
     fn placeholder_commands_are_not_buttons() {
         assert!(command_keyboard(&["购买 <物品>".to_string()]).is_none());
     }
@@ -250,7 +284,9 @@ mod tests {
     fn legacy_inline_links_are_rendered_as_plain_labels() {
         let payload = GamePayload {
             title: "菜单".to_string(),
-            markdown_content: "[状态](mqqapi://aio/inlinecmd?command=%E7%8A%B6%E6%80%81&enter=false&reply=false)".to_string(),
+            markdown_content:
+                "[状态](mqqapi://aio/inlinecmd?command=%E7%8A%B6%E6%80%81&enter=false&reply=false)"
+                    .to_string(),
             ..GamePayload::default()
         };
         let markdown = official_markdown(&payload).unwrap();
