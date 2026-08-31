@@ -17,6 +17,14 @@ pub fn queue_response(
     } else {
         BotApi::send_group_rich(&inbound.group_id, &segments);
     }
+    if !payload.image_base64.trim().is_empty() {
+        let image_segments = image_segments(payload);
+        if inbound.is_private {
+            BotApi::send_private_rich(request.sender_id.as_str(), &image_segments);
+        } else {
+            BotApi::send_group_rich(&inbound.group_id, &image_segments);
+        }
+    }
     true
 }
 
@@ -40,15 +48,6 @@ pub fn queue_broadcasts(inbound: &InboundMessage, payload: &GamePayload, markdow
 }
 
 fn response_segments(payload: &GamePayload, markdown_enabled: bool) -> Option<String> {
-    if !payload.image_base64.trim().is_empty() {
-        return Some(
-            json!([{
-                "type":"image",
-                "data":{"file":format!("base64://{}", payload.image_base64.trim())}
-            }])
-            .to_string(),
-        );
-    }
     if markdown_enabled {
         let Some(markdown) = official_markdown(payload) else {
             return text_segment(payload);
@@ -63,6 +62,14 @@ fn response_segments(payload: &GamePayload, markdown_enabled: bool) -> Option<St
         return Some(Value::Array(segments).to_string());
     }
     text_segment(payload)
+}
+
+fn image_segments(payload: &GamePayload) -> String {
+    json!([{
+        "type":"image",
+        "data":{"file":format!("base64://{}", payload.image_base64.trim())}
+    }])
+    .to_string()
 }
 
 fn text_segment(payload: &GamePayload) -> Option<String> {
@@ -96,6 +103,8 @@ fn official_markdown(payload: &GamePayload) -> Option<String> {
     }
     if !body.is_empty() {
         sections.push(strip_legacy_inline_commands(body));
+    } else if !payload.image_base64.trim().is_empty() {
+        sections.push("图片已生成，请查看下一条消息。".to_string());
     }
     if !payload.image_url.trim().is_empty() && is_http_url(payload.image_url.trim()) {
         sections.insert(
@@ -219,19 +228,33 @@ mod tests {
     }
 
     #[test]
-    fn image_reply_uses_base64_segment() {
+    fn image_reply_uses_followup_base64_segment() {
         let payload = GamePayload {
+            title: "状态图".to_string(),
             image_base64: "YWJj".to_string(),
             image_only: true,
             ..GamePayload::default()
         };
-        let segments = response_segments(&payload, true).unwrap();
-        assert!(segments.contains("base64://YWJj"));
-        assert!(!segments.contains("markdown"));
+        let main = response_segments(&payload, true).unwrap();
+        assert!(main.contains("markdown"));
+        assert!(main.contains("下一条消息"));
+        assert!(image_segments(&payload).contains("base64://YWJj"));
     }
 
     #[test]
     fn placeholder_commands_are_not_buttons() {
         assert!(command_keyboard(&["购买 <物品>".to_string()]).is_none());
+    }
+
+    #[test]
+    fn legacy_inline_links_are_rendered_as_plain_labels() {
+        let payload = GamePayload {
+            title: "菜单".to_string(),
+            markdown_content: "[状态](mqqapi://aio/inlinecmd?command=%E7%8A%B6%E6%80%81&enter=false&reply=false)".to_string(),
+            ..GamePayload::default()
+        };
+        let markdown = official_markdown(&payload).unwrap();
+        assert!(markdown.contains("状态"));
+        assert!(!markdown.contains("mqqapi://"));
     }
 }
