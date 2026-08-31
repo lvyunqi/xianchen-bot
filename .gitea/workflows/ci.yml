@@ -62,3 +62,10 @@ jobs:
         run: cargo test --all-targets
       - name: cargo build release
         run: cargo build --release
+      - name: verify Linux artifacts
+        run: |
+          mkdir -p dist
+          cp target/release/libqimen_dynamic_plugin_xianchen.so dist/
+          cp embedded/xianchen-worker dist/
+          file dist/libqimen_dynamic_plugin_xianchen.so dist/xianchen-worker
+          sha256sum dist/* | tee dist/SHA256SUMS
