@@ -114,10 +114,16 @@ func fatal(err error) {
 }
 
 // initRuntime 初始化数据目录、数据库、游戏引擎与管理后台（幂等）。
+// runtimeState 写锁只在读取/赋值瞬间持有：initRuntime 内部严禁在持锁状态下
+// 调用 writeRuntimeLog（其内部取读锁，Go RWMutex 不可重入，会永久自死锁）。
 func initRuntime(dataDir, adminHost string) error {
 	runtimeState.Lock()
-	defer runtimeState.Unlock()
-	if runtimeState.game != nil && strings.EqualFold(runtimeState.dataDir, dataDir) {
+	alreadyReady := runtimeState.game != nil && strings.EqualFold(runtimeState.dataDir, dataDir)
+	if !alreadyReady {
+		runtimeState.dataDir = dataDir
+	}
+	runtimeState.Unlock()
+	if alreadyReady {
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Join(dataDir, "data"), 0o755); err != nil {
@@ -128,24 +134,22 @@ func initRuntime(dataDir, adminHost string) error {
 	if err != nil {
 		return err
 	}
-	if runtimeState.store != nil {
-		_ = runtimeState.store.Close()
-	}
 	game, err := service.NewGame(store)
 	if err != nil {
 		_ = store.Close()
 		return err
 	}
-	runtimeState.dataDir = dataDir
-	runtimeState.store = store
-	runtimeState.game = game
 	adminURL, err := startAdminServer(store, dataDir, adminHost)
 	if err != nil {
 		// 管理后台起不来不阻塞游戏主链路，记录后继续。
 		writeRuntimeLog("管理后台启动失败", err.Error())
-		return nil
+	} else {
+		writeRuntimeLog("管理后台就绪", adminURL)
 	}
-	writeRuntimeLog("管理后台就绪", adminURL)
+	runtimeState.Lock()
+	runtimeState.store = store
+	runtimeState.game = game
+	runtimeState.Unlock()
 	return nil
 }
 

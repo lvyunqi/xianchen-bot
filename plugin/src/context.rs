@@ -1,9 +1,12 @@
 use abi_stable_host_api::InterceptorRequest;
 use serde_json::{Map, Value};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::worker::InboundMessage;
 
 const MAX_ID_CHARS: usize = 256;
+
+static CONTEXT_FALLBACK_WARNED: AtomicBool = AtomicBool::new(false);
 
 pub fn resolve_inbound(request: &InterceptorRequest) -> Result<InboundMessage, String> {
     let sender_id = valid_id(request.sender_id.as_str(), "发送者 OpenID")?;
@@ -12,32 +15,47 @@ pub fn resolve_inbound(request: &InterceptorRequest) -> Result<InboundMessage, S
     let root = raw
         .as_object()
         .ok_or_else(|| "原始事件必须是 JSON 对象".to_string())?;
-    let context = root
-        .get("qimen_context")
-        .and_then(Value::as_object)
-        .ok_or_else(|| "原始事件缺少可信 qimen_context".to_string())?;
-    if context.get("version").and_then(Value::as_u64) != Some(1) {
-        return Err("qimen_context 版本不受支持".to_string());
-    }
-    if context.get("protocol").and_then(Value::as_str) != Some("qq-official") {
-        return Err("不是 qq-official 消息".to_string());
-    }
-    let account_id = valid_id(
-        context
-            .get("account_id")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "qimen_context 缺少稳定 account_id".to_string())?,
-        "Bot account_id",
-    )?;
-    let payload = root
-        .get("qqbot_payload")
-        .and_then(Value::as_object)
-        .ok_or_else(|| "官方 QQ 事件缺少 qqbot_payload".to_string())?;
+
+    // 宿主注入的可信上下文（新版 qimenbotd）。缺失时回退到网关事件形状推导：
+    // 只接受官方 QQ 事件类型白名单，账号身份回退为部署别名 bot_id。
+    let account_id = match root.get("qimen_context").and_then(Value::as_object) {
+        Some(context) => {
+            if context.get("version").and_then(Value::as_u64) != Some(1) {
+                return Err("qimen_context 版本不受支持".to_string());
+            }
+            if context.get("protocol").and_then(Value::as_str) != Some("qq-official") {
+                return Err("不是 qq-official 消息".to_string());
+            }
+            match context.get("account_id").and_then(Value::as_str) {
+                Some(account_id) => valid_id(account_id, "Bot account_id")?,
+                None => request.bot_id.as_str().trim().to_string(),
+            }
+        }
+        None => {
+            if !CONTEXT_FALLBACK_WARNED.swap(true, Ordering::Relaxed) {
+                eprintln!(
+                    "仙尘：宿主事件缺少 qimen_context，已回退到网关事件推导（建议升级 qimenbotd）"
+                );
+            }
+            request.bot_id.as_str().trim().to_string()
+        }
+    };
+
     let event_type = root
         .get("event_type")
         .and_then(Value::as_str)
-        .or_else(|| payload.get("event_type").and_then(Value::as_str))
+        .or_else(|| root.get("t").and_then(Value::as_str))
+        .or_else(|| {
+            root.get("qqbot_payload")
+                .and_then(|payload| payload.get("event_type"))
+                .and_then(Value::as_str)
+        })
         .ok_or_else(|| "官方 QQ 事件缺少 event_type".to_string())?;
+    let payload = root
+        .get("qqbot_payload")
+        .and_then(Value::as_object)
+        .or_else(|| root.get("d").and_then(Value::as_object))
+        .ok_or_else(|| "官方 QQ 事件缺少消息载荷".to_string())?;
     let (group_id, is_private) = match event_type {
         "GROUP_AT_MESSAGE_CREATE" | "GROUP_MESSAGE_CREATE" => {
             let payload_group = payload
@@ -206,6 +224,24 @@ mod tests {
             resolve_inbound(&request).unwrap().text,
             "结缘 target-openid"
         );
+    }
+
+    #[test]
+    fn resolves_gateway_event_without_qimen_context() {
+        let inbound = resolve_inbound(&request(json!({
+            "op": 0,
+            "t": "GROUP_MESSAGE_CREATE",
+            "d": {
+                "content": "菜单",
+                "group_openid": "group-openid",
+                "author": {"id": "user-openid"}
+            }
+        })))
+        .unwrap();
+        assert_eq!(inbound.group_id, "group-openid");
+        assert!(!inbound.is_private);
+        assert_eq!(inbound.account_id, "qq-main");
+        assert_eq!(inbound.text, "状态");
     }
 
     #[test]

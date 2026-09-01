@@ -4,9 +4,29 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"xianlv/internal/service"
 )
+
+// 回归测试：initRuntime 曾在持有 runtimeState 写锁时调用 writeRuntimeLog
+//（其内部取读锁），Go RWMutex 不可重入导致永久自死锁，“内核状态”永远初始化中。
+func TestInitRuntimeCompletesWithoutSelfDeadlock(t *testing.T) {
+	dir := t.TempDir()
+	done := make(chan error, 1)
+	go func() {
+		done <- initRuntime(dir, "127.0.0.1")
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("initRuntime 失败: %v", err)
+		}
+	case <-time.After(90 * time.Second):
+		t.Fatal("initRuntime 90 秒未返回（疑似持锁调用 writeRuntimeLog 自死锁）")
+	}
+	stopAdminServer()
+}
 
 func TestAdminListenAddress(t *testing.T) {
 	cases := []struct {
