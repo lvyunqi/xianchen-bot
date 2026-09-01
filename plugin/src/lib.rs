@@ -328,24 +328,34 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
     } else {
         "关闭"
     };
-    let runtime = worker_slot().lock().ok();
-    let worker_state = runtime
-        .as_ref()
-        .and_then(|slot| slot.as_ref())
+    let mut slot = worker_slot().lock().ok();
+    let worker_state = slot
+        .as_mut()
+        .and_then(|slot| slot.as_mut())
         .filter(|worker| worker.is_running())
         .map(|worker| {
-            format!(
-                "运行中（worker={}，后台={}）",
-                if worker.version.is_empty() {
-                    "未知"
-                } else {
-                    &worker.version
-                },
-                if worker.admin_url.is_empty() {
-                    "未提供"
-                } else {
-                    &worker.admin_url
+            let probe = worker.health();
+            let version = if worker.version.is_empty() {
+                "未知"
+            } else {
+                worker.version.as_str()
+            };
+            let admin = if worker.admin_url.is_empty() {
+                "未提供"
+            } else {
+                worker.admin_url.as_str()
+            };
+            let kernel = match &probe {
+                Ok(pong) if pong.kernel_ready => "就绪".to_string(),
+                Ok(pong) if !pong.init_error.is_empty() => {
+                    format!("初始化失败：{}", pong.init_error)
                 }
+                Ok(_) => "初始化中（首次建库需要一些时间，稍后再试游戏指令）".to_string(),
+                Err(error) => format!("探测失败：{}", error),
+            };
+            format!(
+                "运行中（worker={}，后台={}）\n内核状态：{}",
+                version, admin, kernel
             )
         })
         .unwrap_or_else(|| {
@@ -363,7 +373,7 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
 
 #[dynamic_plugin(
     id = "xianchen",
-    version = "0.1.0-rc.2",
+    version = "0.1.0-rc.3",
     api = "0.6",
     config_schema = "../config.schema.json",
     config_ui = "../config.ui.json",
@@ -416,7 +426,14 @@ mod plugin {
             // 超时消息立即放行；下一条消息再恢复，避免超过宿主回调预算。
             return InterceptorResponse::allow();
         };
+        if reply.kind == "error" && !reply.error.is_empty() {
+            eprintln!("仙尘内核错误：{}", reply.error);
+        }
         if reply.kind != "reply" || !reply.handled {
+            if reply.kind == "reply" && !reply.error.is_empty() {
+                // 内核未就绪/初始化失败等降级提示写入宿主日志，避免完全静默。
+                eprintln!("仙尘内核提示：{}", reply.error);
+            }
             return InterceptorResponse::allow();
         }
         let Some(payload) = reply.result else {

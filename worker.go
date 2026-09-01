@@ -284,13 +284,20 @@ func runStdioLoop(input io.Reader, output io.Writer, initDone <-chan error) erro
 		}
 		switch envelope.Type {
 		case "ping":
+			kernelReady := initResolved && initErr == nil
+			kernelError := ""
+			if initErr != nil {
+				kernelError = initErr.Error()
+			}
 			reply := struct {
 				Type             string `json:"type"`
 				ProtocolVersion  int    `json:"protocol_version"`
 				Version          string `json:"version"`
 				PluginName       string `json:"plugin_name"`
 				AdminURL         string `json:"admin_url,omitempty"`
-			}{Type: "pong", ProtocolVersion: protocolVersion, Version: appinfo.Version, PluginName: appinfo.PluginName, AdminURL: currentAdminURL()}
+				KernelReady      bool   `json:"kernel_ready"`
+				InitError        string `json:"init_error,omitempty"`
+			}{Type: "pong", ProtocolVersion: protocolVersion, Version: appinfo.Version, PluginName: appinfo.PluginName, AdminURL: currentAdminURL(), KernelReady: kernelReady, InitError: kernelError}
 			if err := encoder.Encode(reply); err != nil {
 				return err
 			}

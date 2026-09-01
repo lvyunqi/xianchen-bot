@@ -57,6 +57,12 @@ pub struct WorkerReply {
     pub version: String,
     #[serde(default)]
     pub admin_url: String,
+    #[serde(default)]
+    pub kernel_ready: bool,
+    #[serde(default)]
+    pub init_error: String,
+    #[serde(default)]
+    pub error: String,
 }
 
 struct Request {
@@ -72,6 +78,8 @@ pub struct WorkerRuntime {
     running: bool,
     pub version: String,
     pub admin_url: String,
+    pub kernel_ready: bool,
+    pub init_error: String,
 }
 
 impl WorkerRuntime {
@@ -135,6 +143,8 @@ impl WorkerRuntime {
             running: true,
             version: String::new(),
             admin_url: String::new(),
+            kernel_ready: false,
+            init_error: String::new(),
         };
         let ping = match runtime.request_line(r#"{"type":"ping"}"#, spawn_timeout) {
             Ok(ping) => ping,
@@ -152,7 +162,27 @@ impl WorkerRuntime {
         }
         runtime.version = ping.version;
         runtime.admin_url = ping.admin_url;
+        runtime.kernel_ready = ping.kernel_ready;
+        runtime.init_error = ping.init_error.clone();
         Ok(runtime)
+    }
+
+    /// 实时探测 worker：刷新版本、后台地址与内核就绪状态。
+    /// 探测失败不停止 worker；真正的故障由消息路径的恢复逻辑处理。
+    pub fn health(&mut self) -> Result<WorkerReply, String> {
+        if !self.running {
+            return Err("Go worker 已停止".to_string());
+        }
+        let timeout = Duration::from_secs(3).min(self.io_timeout);
+        let pong = self.request_line(r#"{"type":"ping"}"#, timeout)?;
+        if pong.kind != "pong" {
+            return Err(format!("Go worker 探测响应异常：type={}", pong.kind));
+        }
+        self.version = pong.version.clone();
+        self.admin_url = pong.admin_url.clone();
+        self.kernel_ready = pong.kernel_ready;
+        self.init_error = pong.init_error.clone();
+        Ok(pong)
     }
 
     pub fn request(&mut self, message: &InboundMessage) -> Result<WorkerReply, String> {
@@ -276,6 +306,15 @@ fn extract_worker(runtime_dir: &Path) -> Result<PathBuf, String> {
         env!("CARGO_PKG_VERSION"),
         if cfg!(windows) { ".exe" } else { "" }
     ));
+    // 清理历史版本释放的 worker（正在运行的旧 worker 在 Windows 上可能删除失败，忽略即可）。
+    if let Ok(entries) = fs::read_dir(&bin_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            if name.to_string_lossy().starts_with("xianchen-worker-") && entry.path() != executable {
+                let _ = fs::remove_file(entry.path());
+            }
+        }
+    }
     let current = fs::read(&executable).ok();
     if current.as_deref() != Some(EMBEDDED_WORKER) {
         let temporary = executable.with_extension("tmp");

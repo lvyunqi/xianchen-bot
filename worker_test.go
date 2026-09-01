@@ -74,12 +74,16 @@ func TestStdioLoopPingPong(t *testing.T) {
 		Type            string "json:\"type\""
 		ProtocolVersion int    "json:\"protocol_version\""
 		Version         string "json:\"version\""
+		KernelReady     bool   "json:\"kernel_ready\""
 	}
 	if err := json.Unmarshal([]byte(lines[0]), &pong); err != nil {
 		t.Fatalf("ping reply is not valid JSON: %v", err)
 	}
 	if pong.Type != "pong" || pong.ProtocolVersion != protocolVersion || pong.Version == "" {
 		t.Fatalf("unexpected pong: %+v", pong)
+	}
+	if !pong.KernelReady {
+		t.Fatalf("expected kernel ready after resolved init, got %+v", pong)
 	}
 	if !strings.Contains(lines[1], "无法解析的协议行") {
 		t.Fatalf("expected parse error reply, got %q", lines[1])
