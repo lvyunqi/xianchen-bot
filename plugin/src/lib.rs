@@ -167,7 +167,7 @@ fn current_config() -> PluginConfig {
 /// 最近一次 pre_handle 消息链路的一行摘要，供 `仙尘状态` 诊断静默问题。
 static LAST_TRACE: OnceLock<Mutex<Option<(Instant, String)>>> = OnceLock::new();
 
-fn last_trace_slot() -> 'static Mutex<Option<(Instant, String)>> {
+fn last_trace_slot() -> &'static Mutex<Option<(Instant, String)>> {
     LAST_TRACE.get_or_init(|| Mutex::new(None))
 }
 
