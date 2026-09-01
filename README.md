@@ -66,12 +66,9 @@
 go run ./cmd/server
 ```
 
-## 构建
+## 玩家交流
 
-本项目**不在本地构建**：所有测试与发布均由 Gitea Actions 完成。
-
-- push 到 `develop`：Go 测试 + Rust fmt/clippy/test + Windows 产物校验
-- 推送 `v*` tag：发布流水线（版本一致性校验 → 创建 Release → Linux glibc 2.31 与 Windows 构建 → 压缩包与 SHA256 上传）
+点击链接加入群聊【斗罗大陆·S2公测一群】：<https://qun.qq.com/universal-share/share?ac=1&authKey=lDlAIR7KPU1Bz31kyFzgvI5lT111SPGu8rTx1fpM2a4oJgJ1IYRESmopYK7HwOi%2B&busi_data=eyJncm91cENvZGUiOiI1NTc2NDcyMzUiLCJ0b2tlbiI6IkRmVWpsYnlZK29rbUh4ZCttVVVwb1Z1akdocGJ1K2FEV1JIcUkxb1lvbDNkbFgyQ1ZYM3g1VXBnTVpQSlNJd2wiLCJ1aW4iOiI0MzQ2NTgxOTgifQ%3D%3D&data=i_oqUZAxPVfVrpnyoVhHAW14wb0i3EG_pYpEsqHg8_f4am4TCwrP11KD5JzJ_UIcIfDQIx65h_-NYKYRIrb6Hg&svctype=4&tempid=h5_group_info>
 
 ## 作者
 
