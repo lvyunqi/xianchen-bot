@@ -1,6 +1,6 @@
 [package]
 name = "qimen-dynamic-plugin-xianchen"
-version = "0.1.0-rc.6"
+version = "0.1.0-rc.7"
 edition = "2024"
 rust-version = "1.89"
 description = "QimenBot 动态插件：仙尘修仙文字游戏（Go 内核桥接）"

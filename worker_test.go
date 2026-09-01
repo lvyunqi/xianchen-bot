@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +13,13 @@ import (
 // 回归测试：initRuntime 曾在持有 runtimeState 写锁时调用 writeRuntimeLog
 //（其内部取读锁），Go RWMutex 不可重入导致永久自死锁，“内核状态”永远初始化中。
 func TestInitRuntimeCompletesWithoutSelfDeadlock(t *testing.T) {
-	dir := t.TempDir()
+	// 自管临时目录：异步 runtime.log 写入协程可能在测试结束后仍创建文件，
+	// t.TempDir 的严格清理会因“directory not empty”误报失败，这里尽力清理即可。
+	dir, err := os.MkdirTemp("", "xianlv-init-*")
+	if err != nil {
+		t.Fatalf("创建临时目录失败: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	done := make(chan error, 1)
 	go func() {
 		done <- initRuntime(dir, "127.0.0.1")
