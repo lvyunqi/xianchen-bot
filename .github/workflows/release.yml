@@ -1,0 +1,197 @@
+name: Release QimenBot plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+env:
+  PLUGIN_ID: xianchen
+  LIB_STEM: qimen_dynamic_plugin_xianchen
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    name: 版本校验与测试
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: verify tag and plugin metadata
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 '^version' plugin/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          declared=$(grep -m1 'version = "' plugin/src/lib.rs | sed 's/.*version = "\(.*\)".*/\1/')
+          echo "Cargo.toml=${version} descriptor=${declared} ref=${GITHUB_REF_NAME} event=${GITHUB_EVENT_NAME}"
+          test "${version}" = "${declared}"
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            test "${GITHUB_REF_NAME}" = "v${version}"
+          fi
+          grep -q 'api = "0.6"' plugin/src/lib.rs
+      - name: ensure Cargo.lock
+        working-directory: plugin
+        run: test -f Cargo.lock || cargo generate-lockfile
+      - name: upload Cargo.lock artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock
+          path: plugin/Cargo.lock
+          if-no-files-found: error
+      - name: build embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -o plugin/embedded/xianchen-worker .
+      - name: cargo fmt
+        working-directory: plugin
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        working-directory: plugin
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: cargo test
+        working-directory: plugin
+        run: cargo test --locked --all-targets
+
+  linux:
+    name: Linux x64 GNU 构建
+    needs: verify
+    runs-on: ubuntu-22.04
+    # Debian 11 固定 GNU/Linux 产物的 glibc 基线（实测最高引用 2.30）。
+    container:
+      image: rust:1.89-bullseye
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      - name: install go for embedded worker
+        run: |
+          curl -fsSL https://go.dev/dl/go1.23.0.linux-amd64.tar.gz -o /tmp/go.tar.gz
+          tar -C /usr/local -xzf /tmp/go.tar.gz
+          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
+      - name: build embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker .
+      - name: build plugin (locked)
+        working-directory: plugin
+        run: |
+          test -f Cargo.lock || cargo generate-lockfile
+          cargo build --locked --release --target "$TARGET"
+      - name: prepare marketplace and deploy assets
+        shell: bash
+        env:
+          TARGET: ${{ env.TARGET }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets dist
+          source="plugin/target/${TARGET}/release/lib${LIB_STEM}.so"
+          asset="release-assets/lib${LIB_STEM}-${TARGET}.so"
+          cp "$source" "$asset"
+          (cd release-assets && sha256sum "$(basename "$asset")" > "$(basename "$asset").sha256")
+          cp "$source" dist/
+          cp plugin/embedded/xianchen-worker dist/
+          (cd dist && sha256sum libqimen_dynamic_plugin_xianchen.so xianchen-worker > SHA256SUMS)
+          version=$(grep -m1 '^version' plugin/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          (cd dist && zip "../release-assets/qimen-dynamic-plugin-xianchen-${version}-${TARGET}.zip" libqimen_dynamic_plugin_xianchen.so xianchen-worker SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-x86_64-unknown-linux-gnu
+          path: release-assets/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64 构建
+    needs: verify
+    runs-on: windows-2022
+    env:
+      TARGET: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: build windows worker
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force plugin/embedded | Out-Null
+          $env:GOOS = "windows"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
+          go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker.exe .
+      - name: build plugin (locked)
+        shell: pwsh
+        working-directory: plugin
+        run: |
+          if (-not (Test-Path Cargo.lock)) { cargo generate-lockfile }
+          cargo build --locked --release --target $env:TARGET
+      - name: prepare marketplace and deploy assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets, dist | Out-Null
+          $source = "plugin/target/$env:TARGET/release/$env:LIB_STEM.dll"
+          $asset = "release-assets/$env:LIB_STEM-$env:TARGET.dll"
+          Copy-Item $source $asset
+          $hash = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLower()
+          "$hash  $($asset.Split('/')[-1])" | Set-Content -Encoding ascii "$asset.sha256"
+          Copy-Item $source dist/
+          Copy-Item plugin/embedded/xianchen-worker.exe dist/
+          Push-Location dist
+          (Get-FileHash qimen_dynamic_plugin_xianchen.dll, xianchen-worker.exe -Algorithm SHA256) |
+            ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), $_.Path.Split('\')[-1] } |
+            Set-Content -Encoding ascii SHA256SUMS
+          Pop-Location
+          $version = (Select-String -Path plugin/Cargo.toml -Pattern '^version = "(.*)"').Matches[0].Groups[1].Value
+          Compress-Archive -Path dist/* -DestinationPath "release-assets/qimen-dynamic-plugin-xianchen-$version-$env:TARGET.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-x86_64-pc-windows-msvc
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: 发布 GitHub Release
+    needs: [linux, windows]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: plugin-*
+          path: release-assets
+          merge-multiple: true
+      - name: list release assets
+        run: find release-assets -maxdepth 1 -type f -printf "%f
+" | sort
+      - name: generate build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release-assets/*.so
+            release-assets/*.dll
+      - name: publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            仙尘修仙文字游戏 QimenBot 动态插件。
+
+            - 宿主要求：QimenBot v0.1.18+（API 0.6）
+            - Go worker 已嵌入插件动态库，无需单独部署；首次启动自动释放到数据目录
+            - 商店标准资产：带完整 target 后缀的裸动态库 + .sha256（附构建来源证明）
+            - 部署便捷包：同版本 zip（动态库 + worker + SHA256SUMS）
+            - 官方 QQ 无 Markdown 权限时，把 qq_official_markdown 设为 false 走纯文本

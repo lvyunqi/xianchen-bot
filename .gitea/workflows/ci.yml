@@ -54,14 +54,16 @@ jobs:
           cd ..
           mkdir -p plugin/embedded
           go build -o plugin/embedded/xianchen-worker .
+      - name: ensure Cargo.lock
+        run: test -f Cargo.lock || cargo generate-lockfile
       - name: cargo fmt
         run: cargo fmt --all -- --check
       - name: cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --locked --all-targets -- -D warnings
       - name: cargo test
-        run: cargo test --all-targets
+        run: cargo test --locked --all-targets
       - name: cargo build release
-        run: cargo build --release
+        run: cargo build --locked --release
       - name: verify Linux artifacts
         run: |
           mkdir -p dist

@@ -27,6 +27,14 @@ jobs:
           test "${GITHUB_REF_NAME}" = "v${version}"
           test "${version}" = "${declared}"
           grep -q 'api = "0.6"' plugin/src/lib.rs
+      - name: ensure Cargo.lock
+        working-directory: plugin
+        run: test -f Cargo.lock || cargo generate-lockfile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock
+          path: plugin/Cargo.lock
+          if-no-files-found: error
 
   create-release:
     name: 准备 Release
@@ -92,7 +100,9 @@ jobs:
           go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker .
       - name: build plugin
         working-directory: plugin
-        run: cargo build --release
+        run: |
+          test -f Cargo.lock || cargo generate-lockfile
+          cargo build --locked --release
       - name: package and upload
         env:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,7 +148,9 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker.exe .
       - name: build Windows plugin
         working-directory: plugin
-        run: cargo xwin build --release --target x86_64-pc-windows-msvc
+        run: |
+          test -f Cargo.lock || cargo generate-lockfile
+          cargo xwin build --locked --release --target x86_64-pc-windows-msvc
       - name: package and upload
         env:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
