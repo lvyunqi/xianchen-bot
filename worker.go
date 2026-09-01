@@ -273,6 +273,13 @@ func runStdioLoop(input io.Reader, output io.Writer, initDone <-chan error) erro
 		if line == "" {
 			continue
 		}
+		if !initResolved {
+			select {
+			case initErr = <-initDone:
+				initResolved = true
+			default:
+			}
+		}
 		var envelope struct {
 			Type string `json:"type"`
 		}
@@ -311,13 +318,6 @@ func runStdioLoop(input io.Reader, output io.Writer, initDone <-chan error) erro
 					return err
 				}
 				continue
-			}
-			if !initResolved {
-				select {
-				case initErr = <-initDone:
-					initResolved = true
-				default:
-				}
 			}
 			switch {
 			case !initResolved:

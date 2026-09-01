@@ -310,7 +310,8 @@ fn extract_worker(runtime_dir: &Path) -> Result<PathBuf, String> {
     if let Ok(entries) = fs::read_dir(&bin_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name();
-            if name.to_string_lossy().starts_with("xianchen-worker-") && entry.path() != executable {
+            let is_worker = name.to_string_lossy().starts_with("xianchen-worker-");
+            if is_worker && entry.path() != executable {
                 let _ = fs::remove_file(entry.path());
             }
         }
