@@ -203,7 +203,7 @@ func must(err error) {
 const installText = `仙尘 v` + appinfo.Version + `
 
 插件名：仙尘
-作者：随缘
+作者：随缘 · 夜空
 
 1. 将“仙尘.dll”放入 Bee 插件目录并加载。
 2. 首次启用未授权属于正常状态；直接点击插件“设置”打开授权窗口。

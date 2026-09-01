@@ -25,6 +25,8 @@ func TestRuntimeOverviewShowsLiveIdentityAndHealth(t *testing.T) {
 		"插件名称：" + appinfo.PluginName,
 		"插件版本：v" + appinfo.Version,
 		"数据库版本：",
+		"作者：" + appinfo.Authors,
+		"开源地址：" + appinfo.SourceURL,
 		"启动时间：",
 		"持续运行：1天2小时",
 		"数据库连接：正常",

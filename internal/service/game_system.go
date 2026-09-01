@@ -134,7 +134,7 @@ func (g *Game) runtimeOverview() (GameResult, bool, error) {
 	if started.IsZero() {
 		started = now
 	}
-	content := fmt.Sprintf("运行状态：%s\n插件载入：正常\n指令系统：正常 · %d条指令 · %d类菜单\n━━━━━━━━━━━\n框架名称：%s\n插件名称：%s\n插件版本：v%s\n数据库版本：%s\n━━━━━━━━━━━\n启动时间：%s\n持续运行：%s\n当前时间：%s\n━━━━━━━━━━━\n数据库连接：%s\n数据存储：%s\n连接数：打开%d · 使用中%d · 空闲%d\n消息模式：%s\n状态显示：%s\n━━━━━━━━━━━\n数据载入：%s\n━━━━━━━━━━━\n版本号、数据库迁移号和数据包名称由同一版本源维护；升级只执行增量迁移，不覆盖现有玩家数据库。", overallState, len(commandSet), len(categorySet), appinfo.FrameworkName, appinfo.PluginName, appinfo.Version, displayOr(schemaVersion, "未读取"), started.Format("2006-01-02 15:04:05"), readableRuntimeDuration(now.Sub(started)), now.Format("2006-01-02 15:04:05"), databaseState, g.store.DatabaseMode(), stats.OpenConnections, stats.InUse, stats.Idle, messageMode, statusMode, strings.Join(countText, " · "))
+	content := fmt.Sprintf("运行状态：%s\n插件载入：正常\n指令系统：正常 · %d条指令 · %d类菜单\n━━━━━━━━━━━\n框架名称：%s\n插件名称：%s\n插件版本：v%s\n数据库版本：%s\n作者：%s\n开源地址：%s\n━━━━━━━━━━━\n启动时间：%s\n持续运行：%s\n当前时间：%s\n━━━━━━━━━━━\n数据库连接：%s\n数据存储：%s\n连接数：打开%d · 使用中%d · 空闲%d\n消息模式：%s\n状态显示：%s\n━━━━━━━━━━━\n数据载入：%s\n━━━━━━━━━━━\n版本号、数据库迁移号和数据包名称由同一版本源维护；升级只执行增量迁移，不覆盖现有玩家数据库。", overallState, len(commandSet), len(categorySet), appinfo.FrameworkName, appinfo.PluginName, appinfo.Version, displayOr(schemaVersion, "未读取"), appinfo.Authors, appinfo.SourceURL, started.Format("2006-01-02 15:04:05"), readableRuntimeDuration(now.Sub(started)), now.Format("2006-01-02 15:04:05"), databaseState, g.store.DatabaseMode(), stats.OpenConnections, stats.InUse, stats.Idle, messageMode, statusMode, strings.Join(countText, " · "))
 	return GameResult{Title: "⚙️ 仙尘运行状态", Content: content, Actions: []string{"系统", "更新公告", "修复公告", "图鉴菜单", "功能菜单"}}, true, nil
 }
 
