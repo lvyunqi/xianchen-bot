@@ -182,13 +182,7 @@ fn last_trace_text() -> String {
         .lock()
         .ok()
         .and_then(|slot| slot.clone())
-        .map(|(at, summary)| {
-            format!(
-                "{}（{} 秒前）",
-                summary,
-                at.elapsed().as_secs()
-            )
-        })
+        .map(|(at, summary)| format!("{}（{} 秒前）", summary, at.elapsed().as_secs()))
         .unwrap_or_else(|| "自插件加载以来从未收到消息".to_string())
 }
 
