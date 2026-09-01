@@ -9,7 +9,7 @@ mod worker;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, RwLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use abi_stable_host_api::{
     CommandRequest, CommandResponse, InterceptorRequest, InterceptorResponse, PluginConfigRequest,
@@ -162,6 +162,34 @@ fn current_config() -> PluginConfig {
         .read()
         .map(|slot| slot.clone())
         .unwrap_or_default()
+}
+
+/// 最近一次 pre_handle 消息链路的一行摘要，供 `仙尘状态` 诊断静默问题。
+static LAST_TRACE: OnceLock<Mutex<Option<(Instant, String)>>> = OnceLock::new();
+
+fn last_trace_slot() -> 'static Mutex<Option<(Instant, String)>> {
+    LAST_TRACE.get_or_init(|| Mutex::new(None))
+}
+
+fn note_trace(summary: String) {
+    if let Ok(mut slot) = last_trace_slot().lock() {
+        *slot = Some((Instant::now(), summary));
+    }
+}
+
+fn last_trace_text() -> String {
+    last_trace_slot()
+        .lock()
+        .ok()
+        .and_then(|slot| slot.clone())
+        .map(|(at, summary)| {
+            format!(
+                "{}（{} 秒前）",
+                summary,
+                at.elapsed().as_secs()
+            )
+        })
+        .unwrap_or_else(|| "自插件加载以来从未收到消息".to_string())
 }
 
 fn replace_config(config: PluginConfig) {
@@ -407,14 +435,19 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
             }
         });
     format!(
-        "仙尘插件 v{}（P1 桥接）\n协议版本：{}\nGo 内核桥接：{}\nMarkdown 渲染：{}\n数据目录：{}",
-        PLUGIN_VERSION, PROTOCOL_VERSION, worker_state, markdown_state, config.data_subdir
+        "仙尘插件 v{}（P1 桥接）\n协议版本：{}\nGo 内核桥接：{}\n最近消息：{}\nMarkdown 渲染：{}\n数据目录：{}",
+        PLUGIN_VERSION,
+        PROTOCOL_VERSION,
+        worker_state,
+        last_trace_text(),
+        markdown_state,
+        config.data_subdir
     )
 }
 
 #[dynamic_plugin(
     id = "xianchen",
-    version = "0.1.0-rc.4",
+    version = "0.1.0-rc.5",
     api = "0.6",
     config_schema = "../config.schema.json",
     config_ui = "../config.ui.json",
@@ -442,31 +475,52 @@ mod plugin {
 
     #[pre_handle]
     fn intercept(request: &InterceptorRequest) -> InterceptorResponse {
+        note_trace(format!(
+            "收到消息 sender={} text={:.24}",
+            request.sender_id.as_str(),
+            request.message_text.as_str()
+        ));
         let config = current_config();
         if !config.worker_enabled
             || LIFECYCLE_BUSY.load(Ordering::Acquire)
             || SHUTDOWN_REQUESTED.load(Ordering::Acquire)
         {
+            note_trace("消息被忽略：worker 未启用或插件正在切换".to_string());
             return InterceptorResponse::allow();
         }
-        let Ok(inbound) = context::resolve_inbound(request) else {
-            return InterceptorResponse::allow();
+        let inbound = match context::resolve_inbound(request) {
+            Ok(inbound) => inbound,
+            Err(error) => {
+                note_trace(format!("消息解析失败：{error}"));
+                eprintln!("仙尘消息解析失败：{error}");
+                return InterceptorResponse::allow();
+            }
         };
         let result = {
             let Ok(mut slot) = worker_slot().lock() else {
+                note_trace("worker 运行时锁已损坏，消息放行".to_string());
                 return InterceptorResponse::allow();
             };
             if !matches!(slot.as_ref(), Some(runtime) if runtime.is_running()) {
                 drop(slot);
                 let _ = recover_worker();
+                note_trace("worker 未运行，已尝试恢复；本条消息放行".to_string());
                 return InterceptorResponse::allow();
             }
             slot.as_mut().expect("worker 状态已检查").request(&inbound)
         };
         let Ok(reply) = result else {
             // 超时消息立即放行；下一条消息再恢复，避免超过宿主回调预算。
+            note_trace(format!(
+                "sender={} worker 请求失败（超时或管道断开），已放行",
+                inbound.sender_id
+            ));
             return InterceptorResponse::allow();
         };
+        note_trace(format!(
+            "sender={} worker 回复：kind={} handled={} error={}",
+            inbound.sender_id, reply.kind, reply.handled, reply.error
+        ));
         if reply.kind == "error" && !reply.error.is_empty() {
             eprintln!("仙尘内核错误：{}", reply.error);
         }
