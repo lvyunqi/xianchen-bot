@@ -528,10 +528,7 @@ mod tests {
     fn unsafe_admin_listen_hosts_are_rejected() {
         for host in ["0.0.0.0 -x", "a/b", "a\\b"] {
             let json = serde_json::json!({ "admin": { "listen_host": host } }).to_string();
-            assert!(
-                parse_config(&json).is_err(),
-                "host 应被拒绝: {host}"
-            );
+            assert!(parse_config(&json).is_err(), "host 应被拒绝: {host}");
         }
     }
 
