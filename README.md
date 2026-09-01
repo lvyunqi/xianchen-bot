@@ -73,3 +73,7 @@ go run ./cmd/server
 ## 作者
 
 随缘 · 夜空
+
+## 许可证
+
+本项目以 [GPL-3.0](LICENSE) 协议开源。
