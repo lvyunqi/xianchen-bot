@@ -1,4 +1,4 @@
-# 仙尘 · QimenBot 动态插件
+# 仙尘 · 尘缘入道，一念登仙
 
 修仙题材 QQ 群文字游戏，以 [QimenBot](https://github.com/lvyunqi/QimenBot) 动态插件形式发布：Rust 薄桥接层负责插件生命周期、消息拦截与 worker 进程管理，Go 内核承载全部游戏语义、SQLite 数据与管理后台。
 
@@ -68,7 +68,7 @@ go run ./cmd/server
 
 ## 玩家交流
 
-点击链接加入群聊【斗罗大陆·S2公测一群】：<https://qun.qq.com/universal-share/share?ac=1&authKey=lDlAIR7KPU1Bz31kyFzgvI5lT111SPGu8rTx1fpM2a4oJgJ1IYRESmopYK7HwOi%2B&busi_data=eyJncm91cENvZGUiOiI1NTc2NDcyMzUiLCJ0b2tlbiI6IkRmVWpsYnlZK29rbUh4ZCttVVVwb1Z1akdocGJ1K2FEV1JIcUkxb1lvbDNkbFgyQ1ZYM3g1VXBnTVpQSlNJd2wiLCJ1aW4iOiI0MzQ2NTgxOTgifQ%3D%3D&data=i_oqUZAxPVfVrpnyoVhHAW14wb0i3EG_pYpEsqHg8_f4am4TCwrP11KD5JzJ_UIcIfDQIx65h_-NYKYRIrb6Hg&svctype=4&tempid=h5_group_info>
+点击链接加入群聊【斗罗大陆·S2公测一群】：[557647235](https://qun.qq.com/universal-share/share?ac=1&authKey=lDlAIR7KPU1Bz31kyFzgvI5lT111SPGu8rTx1fpM2a4oJgJ1IYRESmopYK7HwOi%2B&busi_data=eyJncm91cENvZGUiOiI1NTc2NDcyMzUiLCJ0b2tlbiI6IkRmVWpsYnlZK29rbUh4ZCttVVVwb1Z1akdocGJ1K2FEV1JIcUkxb1lvbDNkbFgyQ1ZYM3g1VXBnTVpQSlNJd2wiLCJ1aW4iOiI0MzQ2NTgxOTgifQ%3D%3D&data=i_oqUZAxPVfVrpnyoVhHAW14wb0i3EG_pYpEsqHg8_f4am4TCwrP11KD5JzJ_UIcIfDQIx65h_-NYKYRIrb6Hg&svctype=4&tempid=h5_group_info)
 
 ## 作者
 
