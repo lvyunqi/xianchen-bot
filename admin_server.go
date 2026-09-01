@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,7 +24,19 @@ var adminServerState struct {
 	url    string
 }
 
-func startAdminServer(store *storage.Store, dataDir string) (string, error) {
+// adminListenAddress 组装监听地址：空地址回落 127.0.0.1，IPv6 自动加方括号。
+func adminListenAddress(host string, port int) string {
+	trimmed := strings.TrimSpace(host)
+	if trimmed == "" {
+		trimmed = "127.0.0.1"
+	}
+	if strings.Contains(trimmed, ":") {
+		trimmed = "[" + trimmed + "]"
+	}
+	return fmt.Sprintf("%s:%d", trimmed, port)
+}
+
+func startAdminServer(store *storage.Store, dataDir, adminHost string) (string, error) {
 	adminServerState.Lock()
 	defer adminServerState.Unlock()
 	if adminServerState.server != nil {
@@ -36,7 +49,7 @@ func startAdminServer(store *storage.Store, dataDir string) (string, error) {
 	var listener net.Listener
 	var address string
 	for port := 8088; port <= 8098; port++ {
-		address = fmt.Sprintf("127.0.0.1:%d", port)
+		address = adminListenAddress(adminHost, port)
 		listener, err = net.Listen("tcp", address)
 		if err == nil {
 			break

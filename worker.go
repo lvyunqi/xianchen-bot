@@ -71,6 +71,7 @@ type GamePayload struct {
 func main() {
 	dataDir := flag.String("data-dir", "", "运行数据目录（默认：可执行文件所在目录）")
 	hostPID := flag.Int("host-pid", 0, "宿主插件进程 PID；进程退出时 worker 自行退出（看门狗）")
+	adminHost := flag.String("admin-host", "127.0.0.1", "管理后台监听地址（默认 127.0.0.1；可设 0.0.0.0 或指定 IP/主机名）")
 	flag.Parse()
 
 	dir := strings.TrimSpace(*dataDir)
@@ -92,7 +93,7 @@ func main() {
 	// ping 立即可达，首次冷启动不再拖垮插件握手；msg 在就绪前立即降级返回。
 	initDone := make(chan error, 1)
 	go func() {
-		if err := initRuntime(absDir); err != nil {
+		if err := initRuntime(absDir, *adminHost); err != nil {
 			writeRuntimeLog("worker初始化失败", err.Error())
 			initDone <- err
 			return
@@ -113,7 +114,7 @@ func fatal(err error) {
 }
 
 // initRuntime 初始化数据目录、数据库、游戏引擎与管理后台（幂等）。
-func initRuntime(dataDir string) error {
+func initRuntime(dataDir, adminHost string) error {
 	runtimeState.Lock()
 	defer runtimeState.Unlock()
 	if runtimeState.game != nil && strings.EqualFold(runtimeState.dataDir, dataDir) {
@@ -138,7 +139,7 @@ func initRuntime(dataDir string) error {
 	runtimeState.dataDir = dataDir
 	runtimeState.store = store
 	runtimeState.game = game
-	adminURL, err := startAdminServer(store, dataDir)
+	adminURL, err := startAdminServer(store, dataDir, adminHost)
 	if err != nil {
 		// 管理后台起不来不阻塞游戏主链路，记录后继续。
 		writeRuntimeLog("管理后台启动失败", err.Error())

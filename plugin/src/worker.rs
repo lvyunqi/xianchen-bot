@@ -86,6 +86,7 @@ impl WorkerRuntime {
     pub fn start(
         data_root: &Path,
         data_subdir: &str,
+        admin_host: &str,
         spawn_timeout: Duration,
         io_timeout: Duration,
     ) -> Result<Self, String> {
@@ -98,6 +99,12 @@ impl WorkerRuntime {
             .arg(&runtime_dir)
             .arg("--host-pid")
             .arg(std::process::id().to_string())
+            .arg("--admin-host")
+            .arg(if admin_host.trim().is_empty() {
+                "127.0.0.1"
+            } else {
+                admin_host.trim()
+            })
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())

@@ -11,6 +11,9 @@
       "io_timeout_secs": 25,
       "data_subdir": "xianchen"
     },
+    "admin": {
+      "listen_host": "127.0.0.1"
+    },
     "messages": {
       "qq_official_markdown": true
     }
@@ -50,6 +53,21 @@
           "minLength": 1,
           "maxLength": 64,
           "default": "xianchen"
+        }
+      }
+    },
+    "admin": {
+      "title": "管理后台",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "listen_host": {
+          "title": "监听地址",
+          "description": "数据管理后台的监听地址，默认 127.0.0.1 仅本机可访问；可设 0.0.0.0 或指定 IP/主机名供远程访问，公网暴露请注意安全。端口在 8088-8098 间自动选择。修改后需重载插件生效。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "default": "127.0.0.1"
         }
       }
     },

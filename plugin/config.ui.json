@@ -1,12 +1,14 @@
 {
   "ui:order": [
     "worker",
+    "admin",
     "messages"
   ],
   "fields": {
     "": {
       "ui:order": [
         "worker",
+        "admin",
         "messages"
       ]
     },
@@ -18,6 +20,12 @@
         "data_subdir"
       ],
       "itemTitle": "Go 内核进程"
+    },
+    "/admin": {
+      "ui:order": [
+        "listen_host"
+      ],
+      "itemTitle": "管理后台"
     },
     "/messages": {
       "ui:order": [

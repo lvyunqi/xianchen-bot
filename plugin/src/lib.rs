@@ -28,6 +28,7 @@ pub struct PluginConfig {
     pub spawn_timeout_secs: u64,
     pub io_timeout_secs: u64,
     pub data_subdir: String,
+    pub admin_listen_host: String,
     pub qq_official_markdown: bool,
 }
 
@@ -38,6 +39,7 @@ impl Default for PluginConfig {
             spawn_timeout_secs: 20,
             io_timeout_secs: 25,
             data_subdir: "xianchen".to_string(),
+            admin_listen_host: "127.0.0.1".to_string(),
             qq_official_markdown: true,
         }
     }
@@ -47,6 +49,7 @@ impl Default for PluginConfig {
 #[serde(default, deny_unknown_fields)]
 struct ConfigDocument {
     worker: WorkerConfigDocument,
+    admin: AdminConfigDocument,
     messages: MessageConfigDocument,
 }
 
@@ -72,6 +75,20 @@ impl Default for WorkerConfigDocument {
 
 #[derive(Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+struct AdminConfigDocument {
+    listen_host: String,
+}
+
+impl Default for AdminConfigDocument {
+    fn default() -> Self {
+        Self {
+            listen_host: "127.0.0.1".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 struct MessageConfigDocument {
     qq_official_markdown: bool,
 }
@@ -88,6 +105,7 @@ impl Default for MessageConfigDocument {
 struct WorkerLaunch {
     data_root: PathBuf,
     data_subdir: String,
+    admin_host: String,
     spawn_timeout: Duration,
     io_timeout: Duration,
 }
@@ -178,11 +196,31 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
     {
         return Err("worker.data_subdir 必须是安全的单级目录名".to_string());
     }
+    let admin_listen_host = document.admin.listen_host.trim();
+    if admin_listen_host.is_empty() {
+        return Ok(PluginConfig {
+            worker_enabled: document.worker.enabled,
+            spawn_timeout_secs: document.worker.spawn_timeout_secs,
+            io_timeout_secs: document.worker.io_timeout_secs,
+            data_subdir: data_subdir.to_string(),
+            admin_listen_host: "127.0.0.1".to_string(),
+            qq_official_markdown: document.messages.qq_official_markdown,
+        });
+    }
+    if admin_listen_host.chars().count() > 64
+        || admin_listen_host.contains('/')
+        || admin_listen_host.contains('\\')
+        || admin_listen_host.contains(char::is_whitespace)
+        || admin_listen_host.chars().any(char::is_control)
+    {
+        return Err("admin.listen_host 必须是不含空白与路径分隔符的主机名或 IP".to_string());
+    }
     Ok(PluginConfig {
         worker_enabled: document.worker.enabled,
         spawn_timeout_secs: document.worker.spawn_timeout_secs,
         io_timeout_secs: document.worker.io_timeout_secs,
         data_subdir: data_subdir.to_string(),
+        admin_listen_host: admin_listen_host.to_string(),
         qq_official_markdown: document.messages.qq_official_markdown,
     })
 }
@@ -203,6 +241,7 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
     let launch = parsed.worker_enabled.then(|| WorkerLaunch {
         data_root: PathBuf::from(data_dir),
         data_subdir: parsed.data_subdir.clone(),
+        admin_host: parsed.admin_listen_host.clone(),
         spawn_timeout: Duration::from_secs(parsed.spawn_timeout_secs),
         io_timeout: Duration::from_secs(parsed.io_timeout_secs),
     });
@@ -226,6 +265,7 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
         Some(launch) => Some(worker::WorkerRuntime::start(
             &launch.data_root,
             &launch.data_subdir,
+            &launch.admin_host,
             launch.spawn_timeout,
             launch.io_timeout,
         )?),
@@ -284,6 +324,7 @@ fn recover_worker_inner() -> Result<(), String> {
     let replacement = worker::WorkerRuntime::start(
         &launch.data_root,
         &launch.data_subdir,
+        &launch.admin_host,
         launch.spawn_timeout.min(Duration::from_secs(20)),
         launch.io_timeout,
     )?;
@@ -373,7 +414,7 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
 
 #[dynamic_plugin(
     id = "xianchen",
-    version = "0.1.0-rc.3",
+    version = "0.1.0-rc.4",
     api = "0.6",
     config_schema = "../config.schema.json",
     config_ui = "../config.ui.json",
@@ -471,8 +512,27 @@ mod tests {
 
     #[test]
     fn empty_config_uses_defaults() {
-        assert_eq!(parse_config("").unwrap(), PluginConfig::default());
+        let config = parse_config("").unwrap();
+        assert_eq!(config, PluginConfig::default());
         assert_eq!(parse_config("   ").unwrap(), PluginConfig::default());
+        assert_eq!(config.admin_listen_host, "127.0.0.1");
+    }
+
+    #[test]
+    fn admin_listen_host_is_parsed() {
+        let config = parse_config(r#"{"admin":{"listen_host":"0.0.0.0"}}"#).unwrap();
+        assert_eq!(config.admin_listen_host, "0.0.0.0");
+    }
+
+    #[test]
+    fn unsafe_admin_listen_hosts_are_rejected() {
+        for host in ["0.0.0.0 -x", "a/b", "a\\b"] {
+            let json = serde_json::json!({ "admin": { "listen_host": host } }).to_string();
+            assert!(
+                parse_config(&json).is_err(),
+                "host 应被拒绝: {host}"
+            );
+        }
     }
 
     #[test]

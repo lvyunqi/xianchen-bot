@@ -8,6 +8,27 @@ import (
 	"xianlv/internal/service"
 )
 
+func TestAdminListenAddress(t *testing.T) {
+	cases := []struct {
+		host string
+		port int
+		want string
+	}{
+		{host: "", port: 8088, want: "127.0.0.1:8088"},
+		{host: "   ", port: 8088, want: "127.0.0.1:8088"},
+		{host: "127.0.0.1", port: 8088, want: "127.0.0.1:8088"},
+		{host: "0.0.0.0", port: 8088, want: "0.0.0.0:8088"},
+		{host: "192.168.1.10", port: 8090, want: "192.168.1.10:8090"},
+		{host: "::", port: 8088, want: "[::]:8088"},
+		{host: "::1", port: 8088, want: "[::1]:8088"},
+	}
+	for _, item := range cases {
+		if got := adminListenAddress(item.host, item.port); got != item.want {
+			t.Fatalf("adminListenAddress(%q, %d) = %q, want %q", item.host, item.port, got, item.want)
+		}
+	}
+}
+
 func TestMessageDedupUsesCallbackMessageID(t *testing.T) {
 	if !acceptMessageOnce("group", "group-a", "user-a", "message-unique-a", "状态") {
 		t.Fatal("first callback was rejected")
