@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  go-test:
+    name: Go 测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: build embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -o plugin/embedded/xianchen-worker .
+
+  rust-check:
+    name: Rust 插件检查
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: plugin
+      - name: prepare embedded worker
+        run: |
+          cd ..
+          mkdir -p plugin/embedded
+          go build -o plugin/embedded/xianchen-worker .
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: cargo test
+        run: cargo test --all-targets
+      - name: cargo build release
+        run: cargo build --release
+      - name: verify Linux artifacts
+        run: |
+          mkdir -p dist
+          cp target/release/libqimen_dynamic_plugin_xianchen.so dist/
+          cp embedded/xianchen-worker dist/
+          file dist/libqimen_dynamic_plugin_xianchen.so dist/xianchen-worker
+          sha256sum dist/* | tee dist/SHA256SUMS
+
+  build-windows:
+    name: Windows x64 产物
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: taiki-e/install-action@cargo-xwin
+      - name: build Windows worker
+        run: |
+          mkdir -p plugin/embedded
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o plugin/embedded/xianchen-worker.exe .
+      - name: build Windows plugin
+        working-directory: plugin
+        run: cargo xwin build --release --target x86_64-pc-windows-msvc
+      - name: verify Windows artifacts
+        run: |
+          mkdir -p plugin/dist/windows
+          cp plugin/target/x86_64-pc-windows-msvc/release/qimen_dynamic_plugin_xianchen.dll plugin/dist/windows/
+          cp plugin/embedded/xianchen-worker.exe plugin/dist/windows/
+          file plugin/dist/windows/*
+          sha256sum plugin/dist/windows/* | tee plugin/dist/windows/SHA256SUMS

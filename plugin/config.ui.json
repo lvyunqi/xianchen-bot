@@ -1,0 +1,37 @@
+{
+  "ui:order": [
+    "worker",
+    "admin",
+    "messages"
+  ],
+  "fields": {
+    "": {
+      "ui:order": [
+        "worker",
+        "admin",
+        "messages"
+      ]
+    },
+    "/worker": {
+      "ui:order": [
+        "enabled",
+        "spawn_timeout_secs",
+        "io_timeout_secs",
+        "data_subdir"
+      ],
+      "itemTitle": "Go 内核进程"
+    },
+    "/admin": {
+      "ui:order": [
+        "listen_host"
+      ],
+      "itemTitle": "管理后台"
+    },
+    "/messages": {
+      "ui:order": [
+        "qq_official_markdown"
+      ],
+      "itemTitle": "消息渲染"
+    }
+  }
+}

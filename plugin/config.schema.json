@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "仙尘",
+  "description": "仙尘修仙文字游戏插件：Go 内核桥接与消息渲染配置。",
+  "type": "object",
+  "additionalProperties": false,
+  "default": {
+    "worker": {
+      "enabled": true,
+      "spawn_timeout_secs": 20,
+      "io_timeout_secs": 25,
+      "data_subdir": "xianchen"
+    },
+    "admin": {
+      "listen_host": "127.0.0.1"
+    },
+    "messages": {
+      "qq_official_markdown": true
+    }
+  },
+  "properties": {
+    "worker": {
+      "title": "Go 内核进程",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "title": "启用内核桥接",
+          "description": "P1 起生效：启动内嵌的 xianchen-worker 子进程并转发消息。",
+          "type": "boolean",
+          "default": true
+        },
+        "spawn_timeout_secs": {
+          "title": "启动超时（秒）",
+          "description": "等待 worker 完成初始化应答的最长时间。",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 120,
+          "default": 20
+        },
+        "io_timeout_secs": {
+          "title": "消息处理超时（秒）",
+          "description": "单条消息等待 worker 应答的最长时间，需小于宿主 dynamic_plugin_timeout_secs。",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 29,
+          "default": 25
+        },
+        "data_subdir": {
+          "title": "数据子目录",
+          "description": "相对 QimenBot data_dir 的运行数据目录名。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "default": "xianchen"
+        }
+      }
+    },
+    "admin": {
+      "title": "管理后台",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "listen_host": {
+          "title": "监听地址",
+          "description": "数据管理后台的监听地址，默认 127.0.0.1 仅本机可访问；可设 0.0.0.0 或指定 IP/主机名供远程访问，公网暴露请注意安全。端口在 8088-8098 间自动选择。修改后需重载插件生效。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "default": "127.0.0.1"
+        }
+      }
+    },
+    "messages": {
+      "title": "消息渲染",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "qq_official_markdown": {
+          "title": "QQ 官方 Markdown",
+          "description": "开启后回复使用原生 Markdown 段，关闭则使用纯文本。",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+server:
+  address: "127.0.0.1:8088"
+  read_timeout: 15s
+  write_timeout: 30s
+  allowed_origins:
+    - "*"
+database:
+  driver: sqlite
+  dsn: data/xianlv.db
+  max_open_connections: 1
+  max_idle_connections: 1
+
+# 玩法参数会在首次启动时写入数据库。此后统一在 /admin 中修改，
+# DLL 内的游戏服务会实时读取，无需重启 Bee。
+game:
+  admin_url: "http://127.0.0.1:8088/admin"
+  command_prefix: ""

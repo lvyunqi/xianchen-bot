@@ -1,0 +1,43 @@
+package storage
+
+import "xianlv/internal/model"
+
+func (s *Store) seedSynthesisRecipes() error {
+	rows := []model.SynthesisRecipe{
+		{Code: "synthesis_meridian_pill", Name: "淬脉丹", Category: "破境丹药", MaterialsJSON: `{"凝露草":3,"灵茶":1}`, OutputName: "淬脉丹", OutputQuantity: 1, SuccessRate: .90, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":1}`, Description: "以凝露草洗练经络，是低层小境突破的基础前置。", Enabled: true, SortOrder: 10},
+		{Code: "synthesis_origin_pill", Name: "凝元丹", Category: "破境丹药", MaterialsJSON: `{"赤焰草":3,"妖兽内丹":1,"灵茶":2}`, OutputName: "凝元丹", OutputQuantity: 1, SuccessRate: .82, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":4,"minimum_perception":12}`, Description: "凝聚散逸真元，是中层小境突破的必要前置。", Enabled: true, SortOrder: 20},
+		{Code: "synthesis_realm_pill", Name: "破境丹", Category: "破境丹药", MaterialsJSON: `{"月华花":2,"妖兽内丹":3,"星辰砂":1}`, OutputName: "破境丹", OutputQuantity: 1, SuccessRate: .70, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":7,"minimum_perception":18}`, Description: "以月华冲刷壁垒，是高层小境突破的必要前置。", Enabled: true, SortOrder: 30},
+		{Code: "synthesis_tribulation_talisman", Name: "引劫玉符", Category: "渡劫法器", MaterialsJSON: `{"雷灵晶":2,"阵基石":2,"龙血芝":1}`, OutputName: "引劫玉符", OutputQuantity: 1, SuccessRate: .62, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":10,"minimum_spirit":15,"minimum_dao_heart":50}`, Description: "刻入自身道韵以牵引劫云，每次大境渡劫必须消耗一枚。", Enabled: true, SortOrder: 40},
+		{Code: "synthesis_foundation_pill", Name: "青元筑基丹", Category: "破境丹药", MaterialsJSON: `{"凝元丹":1,"妖兽内丹":2,"月华花":1}`, OutputName: "筑基丹", OutputQuantity: 1, SuccessRate: .78, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":6,"minimum_perception":15}`, Description: "以妖丹为炉心、月华为药引，辅助炼气圆满修士凝筑道基。", Enabled: true, SortOrder: 50},
+		{Code: "synthesis_mind_pill", Name: "太上清心丹", Category: "心境丹药", MaterialsJSON: `{"灵茶":3,"凝露草":2}`, OutputName: "清心丹", OutputQuantity: 1, SuccessRate: .88, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":3,"minimum_perception":12}`, Description: "清除识海杂念，为心魔、悟道与渡劫前的道心准备。", Enabled: true, SortOrder: 60},
+		{Code: "synthesis_golden_origin_pill", Name: "九炼金元丹", Category: "修炼丹药", MaterialsJSON: `{"破境丹":1,"星辰砂":2,"妖兽内丹":3}`, OutputName: "金元丹", OutputQuantity: 1, SuccessRate: .68, PrerequisiteJSON: `{"minimum_realm_sequence":3,"minimum_realm_level":1,"minimum_perception":22}`, Description: "将星力与妖丹真元九炼归一，供金丹以上修士精进修为。", Enabled: true, SortOrder: 70},
+		{Code: "synthesis_revive_pill", Name: "九转还魂丹", Category: "救命丹药", MaterialsJSON: `{"龙血芝":3,"雷灵晶":2,"月华花":5,"仙露":10}`, OutputName: "九转还魂丹", OutputQuantity: 1, SuccessRate: .48, PrerequisiteJSON: `{"minimum_realm_sequence":6,"minimum_realm_level":5,"minimum_perception":40,"minimum_spirit":40}`, Description: "九转锁魂、龙血续命，濒死时可将气血完全恢复。", Enabled: true, SortOrder: 80},
+		{Code: "synthesis_double_cultivation_card", Name: "太虚聚灵道符", Category: "修炼法符", MaterialsJSON: `{"灵茶":10,"星辰砂":3,"功法残卷":1}`, OutputName: "双倍修为卡", OutputQuantity: 1, SuccessRate: .72, PrerequisiteJSON: `{"minimum_realm_sequence":2,"minimum_realm_level":5,"minimum_spirit":20}`, Description: "将聚灵阵纹封入道符，使用后一小时内提高闭关修炼效率。", Enabled: true, SortOrder: 90},
+		{Code: "synthesis_sweep_ticket", Name: "破界扫荡令", Category: "副本法令", MaterialsJSON: `{"传送符":1,"阵基石":1,"星辰砂":1}`, OutputName: "扫荡券", OutputQuantity: 1, SuccessRate: .92, PrerequisiteJSON: `{"minimum_realm_sequence":2,"minimum_realm_level":1}`, Description: "记录已通关副本的空间道标，仅能扫荡已经手动通关的秘境。", Enabled: true, SortOrder: 100},
+		{Code: "synthesis_skill_scroll", Name: "古经拓印残卷", Category: "功法材料", MaterialsJSON: `{"灵茶":5,"玄铁":2,"星辰砂":1}`, OutputName: "功法残卷", OutputQuantity: 1, SuccessRate: .80, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":5,"minimum_perception":16}`, Description: "以神识拓印古经道痕，可用于参悟和学习功法。", Enabled: true, SortOrder: 110},
+		{Code: "synthesis_mansion_material", Name: "洞天灵木精材", Category: "仙府材料", MaterialsJSON: `{"玄铁":3,"凝露草":3}`, OutputName: "仙府材料", OutputQuantity: 2, SuccessRate: .95, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":1,"mansion_required":true}`, Description: "将灵木纤维与玄铁炼成洞天梁材，用于仙府和灵田升阶。", Enabled: true, SortOrder: 120},
+		{Code: "synthesis_star_sand", Name: "坠星砂精炼", Category: "高阶灵材", MaterialsJSON: `{"玄铁":5,"月华花":1}`, OutputName: "星辰砂", OutputQuantity: 1, SuccessRate: .84, PrerequisiteJSON: `{"minimum_realm_sequence":2,"minimum_realm_level":3,"minimum_perception":18}`, Description: "借月华洗去矿材浊气，留下可承载星力的银色灵砂。", Enabled: true, SortOrder: 130},
+		{Code: "synthesis_thunder_crystal", Name: "九霄雷灵晶", Category: "高阶灵材", MaterialsJSON: `{"星辰砂":4,"妖兽内丹":2}`, OutputName: "雷灵晶", OutputQuantity: 1, SuccessRate: .66, PrerequisiteJSON: `{"minimum_realm_sequence":3,"minimum_realm_level":5,"minimum_spirit":25}`, Description: "以妖丹承受雷意，将游离雷霆压入星砂晶格。", Enabled: true, SortOrder: 140},
+		{Code: "synthesis_formation_stone", Name: "四象阵基石", Category: "阵法灵材", MaterialsJSON: `{"玄铁":4,"星辰砂":1}`, OutputName: "阵基石", OutputQuantity: 1, SuccessRate: .90, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":4,"minimum_spirit":12}`, Description: "在玄铁中刻入四象方位，是布阵、护府与炼制引劫玉符的基础。", Enabled: true, SortOrder: 150},
+		{Code: "synthesis_tribulation_charm", Name: "紫霄避劫符", Category: "渡劫法符", MaterialsJSON: `{"雷灵晶":1,"阵基石":1,"灵茶":3}`, OutputName: "避劫符", OutputQuantity: 1, SuccessRate: .64, PrerequisiteJSON: `{"minimum_realm_sequence":4,"minimum_realm_level":3,"minimum_dao_heart":55}`, Description: "以雷炼雷，在渡劫时抵消部分劫雷威能。", Enabled: true, SortOrder: 160},
+		{Code: "synthesis_teleport_charm", Name: "缩地传送符", Category: "空间法符", MaterialsJSON: `{"阵基石":1,"星辰砂":2}`, OutputName: "传送符", OutputQuantity: 1, SuccessRate: .86, PrerequisiteJSON: `{"minimum_realm_sequence":2,"minimum_realm_level":1,"minimum_spirit":18}`, Description: "记录已解锁地点的地脉坐标，不可越过地图前置强行传送。", Enabled: true, SortOrder: 170},
+		{Code: "synthesis_pet_food", Name: "百草灵兽膳", Category: "灵兽饲料", MaterialsJSON: `{"灵果":2,"凝露草":2}`, OutputName: "灵兽口粮", OutputQuantity: 3, SuccessRate: .96, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":1}`, Description: "以灵果和百草调制的温和灵膳，用于维持灵兽忠诚。", Enabled: true, SortOrder: 180},
+		{Code: "synthesis_immortal_dew", Name: "晨曦凝仙露", Category: "疗伤丹液", MaterialsJSON: `{"凝露草":2,"灵茶":1}`, OutputName: "仙露", OutputQuantity: 2, SuccessRate: .94, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":1}`, Description: "采晨曦第一缕灵机凝成疗伤仙露，避免低阶修士陷入无药可救的闭锁。", Enabled: true, SortOrder: 190},
+		{Code: "synthesis_rebirth_pill", Name: "六道轮回丹", Category: "轮回丹药", MaterialsJSON: `{"九转还魂丹":1,"引劫玉符":2,"龙血芝":5,"雷灵晶":5}`, OutputName: "轮回丹", OutputQuantity: 1, SuccessRate: .36, PrerequisiteJSON: `{"minimum_realm_sequence":8,"minimum_realm_level":10,"minimum_dao_heart":80,"minimum_merit":300}`, Description: "护持兵解真灵进入轮回，只供高境界转世使用。", Enabled: true, SortOrder: 200},
+		{Code: "synthesis_root_essence", Name: "太初灵根精粹", Category: "灵根材料", MaterialsJSON: `{"妖兽内丹":2,"雷灵晶":1,"灵茶":3}`, OutputName: "灵根精粹", OutputQuantity: 1, SuccessRate: .72, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":3,"minimum_spirit":12,"minimum_perception":12}`, Description: "以妖丹承载本源、雷灵晶剥离属性，再用灵茶稳住道纹，所得精粹可用于随机灵根合成。", Enabled: true, SortOrder: 210},
+		{Code: "synthesis_fertilizer_spirit_soil", Name: "灵壤肥", Category: "灵田灵肥", MaterialsJSON: `{"凝露草":3,"灵果":1}`, OutputName: "灵壤肥", OutputQuantity: 2, SuccessRate: 1, PrerequisiteJSON: `{"minimum_realm_sequence":1,"minimum_realm_level":1,"mansion_required":true,"minimum_farm_level":1}`, Description: "将基础灵草与果渣沤入洞天灵壤，炼成适合初阶田垄的温和灵肥。", Enabled: true, SortOrder: 220},
+		{Code: "synthesis_fertilizer_leyline", Name: "地脉灵肥", Category: "灵田灵肥", MaterialsJSON: `{"灵壤肥":2,"赤焰草":2,"妖兽内丹":1}`, OutputName: "地脉灵肥", OutputQuantity: 1, SuccessRate: .90, PrerequisiteJSON: `{"minimum_realm_sequence":2,"minimum_realm_level":1,"mansion_required":true,"minimum_farm_level":2}`, Description: "以妖丹牵引地气、赤焰催化沃壤，炼成兼顾催生与抗灾的地脉灵肥。", Enabled: true, SortOrder: 230},
+		{Code: "synthesis_fertilizer_creation", Name: "造化仙壤", Category: "灵田灵肥", MaterialsJSON: `{"地脉灵肥":3,"月华花":2,"龙血芝":1,"星辰砂":2}`, OutputName: "造化仙壤", OutputQuantity: 1, SuccessRate: .75, PrerequisiteJSON: `{"minimum_realm_sequence":5,"minimum_realm_level":1,"mansion_required":true,"minimum_farm_level":5}`, Description: "以月华调阴阳、龙血芝续生机、星砂定灵脉，炼成供高阶仙圃使用的造化仙壤。", Enabled: true, SortOrder: 240},
+	}
+	for index := range rows {
+		var item model.Item
+		if err := s.DB.Where("name = ?", rows[index].OutputName).First(&item).Error; err != nil {
+			return err
+		}
+		rows[index].OutputItemID = item.ID
+		if err := s.DB.Where("code = ?", rows[index].Code).FirstOrCreate(&rows[index]).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}

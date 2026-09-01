@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    name: 版本一致性校验
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: verify tag and plugin metadata
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 '^version' plugin/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          declared=$(grep -m1 'version = "' plugin/src/lib.rs | sed 's/.*version = "\(.*\)".*/\1/')
+          echo "Cargo.toml=${version} descriptor=${declared} tag=${GITHUB_REF_NAME}"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+          test "${version}" = "${declared}"
+          grep -q 'api = "0.6"' plugin/src/lib.rs
+
+  create-release:
+    name: 准备 Release
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - name: create or reuse release
+        env:
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          auth="Authorization: token ${RELEASE_TOKEN}"
+          tag="${GITHUB_REF_NAME}"
+          case "$tag" in *-*) pre=true ;; *) pre=false ;; esac
+          get_id() { curl -sf -H "$auth" "$api/releases/tags/$tag" | jq -r '.id // empty'; }
+          release_id=$(get_id || true)
+          if [ -z "$release_id" ]; then
+            body="仙尘修仙文字游戏 QimenBot 动态插件测试版。"
+            body="$body\n- 宿主要求：QimenBot v0.1.18+（API 0.6）\n- Go worker 已嵌入插件，无需单独部署；首次启动自动释放到数据目录\n- 选择平台包：Windows 用 x86_64-pc-windows-msvc，Linux 用 x86_64-unknown-linux-gnu\n- 解压后把插件动态库（.dll/.so）放入 qimenbotd 动态插件目录，管理页重新扫描或 POST /api/v1/plugins/reload\n- 官方 QQ 无 Markdown 权限时，把 qq_official_markdown 设为 false 走纯文本"
+            payload=$(jq -n --arg tag "$tag" --arg body "$(printf '%b' "$body")" --argjson pre "$pre" '{tag_name:$tag,name:("仙尘 QimenBot 插件 "+$tag),draft:false,prerelease:$pre,body:$body}')
+            release_id=$(printf '%s' "$payload" | curl -s -X POST -H "$auth" -H "Content-Type: application/json" -d @- "$api/releases" | jq -r '.id // empty' || true)
+          fi
+          if [ -z "$release_id" ]; then
+            sleep 3
+            release_id=$(get_id || true)
+          fi
+          test -n "$release_id"
+          echo "release id: $release_id"
+
+  build-linux:
+    name: Linux x64 GNU 构建
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bullseye
+    defaults:
+      run:
+        shell: bash
+    needs: create-release
+    steps:
+      - name: install base toolchain
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl git build-essential file zip jq xz-utils
+      - name: install node 20 for runner JS actions
+        run: |
+          curl -fsSL https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz -o /tmp/node.tar.xz
+          tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+          node --version
+      - uses: actions/checkout@v4
+      - name: install rust 1.89.0
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.89.0 --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: install go 1.23.0
+        run: |
+          curl -fsSL https://go.dev/dl/go1.23.0.linux-amd64.tar.gz -o /tmp/go.tar.gz
+          tar -C /usr/local -xzf /tmp/go.tar.gz
+          echo "/usr/local/go/bin" >> "$GITHUB_PATH"
+      - name: build embedded worker
+        run: |
+          mkdir -p plugin/embedded
+          go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker .
+      - name: build plugin
+        working-directory: plugin
+        run: cargo build --release
+      - name: package and upload
+        env:
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 '^version' plugin/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          ldd --version | awk 'NR==1'
+          mkdir -p dist
+          cp plugin/target/release/libqimen_dynamic_plugin_xianchen.so dist/
+          cp plugin/embedded/xianchen-worker dist/
+          (cd dist && sha256sum libqimen_dynamic_plugin_xianchen.so xianchen-worker > SHA256SUMS)
+          file dist/*
+          name="qimen-dynamic-plugin-xianchen-${version}-x86_64-unknown-linux-gnu.zip"
+          (cd dist && zip "../${name}" libqimen_dynamic_plugin_xianchen.so xianchen-worker SHA256SUMS)
+          sha256sum "${name}"
+          api="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          auth="Authorization: token ${RELEASE_TOKEN}"
+          tag="${GITHUB_REF_NAME}"
+          release_id=$(curl -sf -H "$auth" "$api/releases/tags/$tag" | jq -r '.id // empty')
+          test -n "$release_id"
+          asset_id=$(curl -sf -H "$auth" "$api/releases/$release_id/assets" | jq -r --arg n "$name" '.[] | select(.name==$n) | .id' || true)
+          if [ -n "$asset_id" ]; then curl -sf -X DELETE -H "$auth" "$api/releases/$release_id/assets/$asset_id"; fi
+          curl -sf -X POST -H "$auth" -H "Content-Type: application/zip" --data-binary @"${name}" "$api/releases/$release_id/assets?name=$name"
+          echo "uploaded ${name}"
+
+  build-windows:
+    name: Windows x64 构建
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: taiki-e/install-action@cargo-xwin
+      - name: build Windows worker
+        run: |
+          mkdir -p plugin/embedded
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o plugin/embedded/xianchen-worker.exe .
+      - name: build Windows plugin
+        working-directory: plugin
+        run: cargo xwin build --release --target x86_64-pc-windows-msvc
+      - name: package and upload
+        env:
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          command -v zip >/dev/null || { apt-get update && apt-get install -y zip; }
+          version=$(grep -m1 '^version' plugin/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          mkdir -p dist
+          cp plugin/target/x86_64-pc-windows-msvc/release/qimen_dynamic_plugin_xianchen.dll dist/
+          cp plugin/embedded/xianchen-worker.exe dist/
+          (cd dist && sha256sum qimen_dynamic_plugin_xianchen.dll xianchen-worker.exe > SHA256SUMS)
+          file dist/*
+          name="qimen-dynamic-plugin-xianchen-${version}-x86_64-pc-windows-msvc.zip"
+          (cd dist && zip "../${name}" qimen_dynamic_plugin_xianchen.dll xianchen-worker.exe SHA256SUMS)
+          sha256sum "${name}"
+          api="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          auth="Authorization: token ${RELEASE_TOKEN}"
+          tag="${GITHUB_REF_NAME}"
+          release_id=$(curl -sf -H "$auth" "$api/releases/tags/$tag" | jq -r '.id // empty')
+          test -n "$release_id"
+          asset_id=$(curl -sf -H "$auth" "$api/releases/$release_id/assets" | jq -r --arg n "$name" '.[] | select(.name==$n) | .id' || true)
+          if [ -n "$asset_id" ]; then curl -sf -X DELETE -H "$auth" "$api/releases/$release_id/assets/$asset_id"; fi
+          curl -sf -X POST -H "$auth" -H "Content-Type: application/zip" --data-binary @"${name}" "$api/releases/$release_id/assets?name=$name"
+          echo "uploaded ${name}"
