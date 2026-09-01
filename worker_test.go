@@ -53,6 +53,8 @@ func TestGameResultReplyProjectsRichPayload(t *testing.T) {
 
 func TestStdioLoopPingPong(t *testing.T) {
 	var output strings.Builder
+	initDone := make(chan error, 1)
+	close(initDone)
 	err := runStdioLoop(strings.NewReader(strings.Join([]string{
 		"{\"type\":\"ping\"}",
 		"",
@@ -60,7 +62,7 @@ func TestStdioLoopPingPong(t *testing.T) {
 		"{\"type\":\"unknown_thing\"}",
 		"{\"type\":\"shutdown\"}",
 		"{\"type\":\"ping\"}",
-	}, "\n")), &output)
+	}, "\n")), &output, initDone)
 	if err != nil {
 		t.Fatalf("stdio loop returned error: %v", err)
 	}
@@ -96,7 +98,9 @@ func TestStdioLoopPingPong(t *testing.T) {
 
 func TestStdioLoopMsgWithoutCommandIsIgnored(t *testing.T) {
 	var output strings.Builder
-	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"text\":\"状态\"}"+ "\n"), &output)
+	initDone := make(chan error, 1)
+	close(initDone)
+	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"text\":\"状态\"}"+ "\n"), &output, initDone)
 	if err != nil {
 		t.Fatalf("stdio loop returned error: %v", err)
 	}
@@ -106,5 +110,24 @@ func TestStdioLoopMsgWithoutCommandIsIgnored(t *testing.T) {
 	}
 	if reply.Type != "reply" || reply.Handled || reply.Error != "" {
 		t.Fatalf("expected unmatched message to be ignored, got %+v", reply)
+	}
+}
+
+func TestStdioLoopMsgDuringInitIsDowngraded(t *testing.T) {
+	var output strings.Builder
+	initDone := make(chan error, 1) // 保持未写入：模拟内核初始化尚未完成
+	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"sender_id\":\"u1\",\"text\":\"菜单\"}"+"\n"), &output, initDone)
+	if err != nil {
+		t.Fatalf("stdio loop returned error: %v", err)
+	}
+	var reply OutboundReply
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output.String())), &reply); err != nil {
+		t.Fatalf("reply is not valid JSON: %v", err)
+	}
+	if reply.Type != "reply" || reply.Handled {
+		t.Fatalf("expected downgraded unhandled reply, got %+v", reply)
+	}
+	if !strings.Contains(reply.Error, "初始化中") {
+		t.Fatalf("expected init-pending downgrade error, got %+v", reply)
 	}
 }

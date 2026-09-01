@@ -363,7 +363,7 @@ pub fn diagnostic_text(config: &PluginConfig) -> String {
 
 #[dynamic_plugin(
     id = "xianchen",
-    version = "0.1.0-rc.1",
+    version = "0.1.0-rc.2",
     api = "0.6",
     config_schema = "../config.schema.json",
     config_ui = "../config.ui.json",

@@ -88,13 +88,20 @@ func main() {
 	if *hostPID > 0 {
 		startHostWatcher(uint32(*hostPID))
 	}
-	if err := initRuntime(absDir); err != nil {
-		writeRuntimeLog("worker初始化失败", err.Error())
-		fatal(err)
-	}
-	writeRuntimeLog("worker就绪", fmt.Sprintf("data_dir=%s version=%s", absDir, appinfo.Version))
+	// 内核初始化（建库、迁移、种子、管理后台）放后台执行：
+	// ping 立即可达，首次冷启动不再拖垮插件握手；msg 在就绪前立即降级返回。
+	initDone := make(chan error, 1)
+	go func() {
+		if err := initRuntime(absDir); err != nil {
+			writeRuntimeLog("worker初始化失败", err.Error())
+			initDone <- err
+			return
+		}
+		writeRuntimeLog("worker就绪", fmt.Sprintf("data_dir=%s version=%s", absDir, appinfo.Version))
+		initDone <- nil
+	}()
 	// stdout 只用于协议输出；运行日志走 stderr 与 runtime.log，绝不污染协议流。
-	if err := runStdioLoop(os.Stdin, os.Stdout); err != nil {
+	if err := runStdioLoop(os.Stdin, os.Stdout, initDone); err != nil {
 		writeRuntimeLog("worker主循环退出", err.Error())
 		fatal(err)
 	}
@@ -254,7 +261,10 @@ func gameResultReply(result service.GameResult) (OutboundReply, error) {
 }
 
 // runStdioLoop 是协议 v0 主循环：逐行读 JSON、应答、直到 EOF 或 shutdown。
-func runStdioLoop(input io.Reader, output io.Writer) error {
+// initDone 携带后台内核初始化结果；未就绪时 ping 正常应答，msg 立即降级返回。
+func runStdioLoop(input io.Reader, output io.Writer, initDone <-chan error) error {
+	initResolved := false
+	initErr := error(nil)
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 64*1024), stdioReadLimit)
 	encoder := json.NewEncoder(output)
@@ -291,6 +301,26 @@ func runStdioLoop(input io.Reader, output io.Writer) error {
 			var message InboundMessage
 			if err := json.Unmarshal([]byte(line), &message); err != nil {
 				if err := encoder.Encode(OutboundReply{Type: "error", Error: "无法解析消息: " + err.Error()}); err != nil {
+					return err
+				}
+				continue
+			}
+			if !initResolved {
+				select {
+				case initErr = <-initDone:
+					initResolved = true
+				default:
+				}
+			}
+			switch {
+			case !initResolved:
+				// 内核仍在初始化：立即降级返回，绝不阻塞插件侧的请求超时。
+				if err := encoder.Encode(OutboundReply{Type: "reply", Handled: false, Error: "游戏内核初始化中，请稍后再试"}); err != nil {
+					return err
+				}
+				continue
+			case initErr != nil:
+				if err := encoder.Encode(OutboundReply{Type: "reply", Error: "游戏内核初始化失败，请查看 runtime.log: " + initErr.Error()}); err != nil {
 					return err
 				}
 				continue
