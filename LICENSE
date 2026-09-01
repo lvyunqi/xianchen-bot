@@ -1,22 +1,16 @@
-仙尘（XianChen）QimenBot 动态插件
-
-Copyright (C) 2026 随缘 (suiyuan) <3694759812@qq.com>
-Copyright (C) 2026 夜空 (mryunqi) <434658198@qq.com>
-
-本程序为自由软件：您可以根据自由软件基金会发布的 GNU 通用公共许可证（第 3 版）
-的条款重新发布和/或修改它。本程序不提供任何形式的担保，详见许可证正文。
+Copyright (C) 2026 suiyuan (xianchen original author) <3694759812@qq.com>
+Copyright (C) 2026 mryunqi (yekong, current maintainer) <434658198@qq.com>
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
-Foundation, version 3 of the License. This program is distributed in the hope
-that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
+Foundation, version 3 of the License.
 
-涵盖范围：仓库根目录的全部源码（Rust 插件 plugin/、Go 内核 internal/ 与 cmd/、
-web/ 管理后台、工作流与数据包脚本）。
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
------------------------------------------------------------------------
+You should have received a copy of the GNU General Public License along with
+this program. The full license text follows.
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007

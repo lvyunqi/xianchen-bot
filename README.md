@@ -76,4 +76,4 @@ go run ./cmd/server
 
 ## 许可证
 
-本项目以 [GPL-3.0](LICENSE) 协议开源。
+本项目以 [GPL-3.0](LICENSE) 协议开源。原作者 随缘（suiyuan），维护者 夜空（mryunqi）。本程序为自由软件，你可以依据 GNU 通用公共许可证第 3 版重新发布或修改它。
