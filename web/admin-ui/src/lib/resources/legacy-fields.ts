@@ -1,36 +1,41 @@
 import type { FieldDef } from "./types"
 
 /** 全量字段目录：由旧版 app.js schemas 迁移生成；json 类字段映射到结构化构建器 */
+
+function asImage(fields: FieldDef[]): FieldDef[] {
+  return fields.map((f) => (f.key.endsWith("image_url") || f.key === "avatar_url" ? { ...f, type: "image" as const } : f))
+}
+
 export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
-  dashboard: [
+  dashboard: asImage([
     { key: "metric", label: "指标", type: "text" },
     { key: "value", label: "当前值", type: "text" },
-  ],
-  config: [
+  ]),
+  config: asImage([
     { key: "key", label: "配置键", type: "text" },
     { key: "value", label: "值", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["int","float","string","bool","json"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  features: [
+  ]),
+  features: asImage([
     { key: "key", label: "功能键", type: "text" },
     { key: "value", label: "开启状态", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["bool","int","float","string"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  constants: [
+  ]),
+  constants: asImage([
     { key: "key", label: "常量键", type: "text" },
     { key: "value", label: "数值", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["int","float","string","bool"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  cooldowns: [
+  ]),
+  cooldowns: asImage([
     { key: "key", label: "操作键", type: "text" },
     { key: "value", label: "冷却秒数", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["int","float"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  realms: [
+  ]),
+  realms: asImage([
     { key: "name", label: "境界", type: "text" },
     { key: "sequence", label: "顺序", type: "number" },
     { key: "required_cultivation", label: "需求修为", type: "number" },
@@ -43,8 +48,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "base_lifespan", label: "寿元", type: "number" },
     { key: "tribulation_base_rate", label: "渡劫率", type: "number" },
     { key: "description", label: "描述", type: "textarea" },
-  ],
-  spiritual_roots: [
+  ]),
+  spiritual_roots: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "灵根名称", type: "text" },
     { key: "element", label: "本源属性", type: "text" },
@@ -59,8 +64,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "image_url", label: "图片 URL", type: "text" },
     { key: "rarity_weight", label: "随机权重", type: "number" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  items: [
+  ]),
+  items: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "category_name", label: "类型", type: "select", options: ["丹药","材料","灵草","残卷","法宝","礼包","种子","灵肥","嵌灵宝石","生辰","任务物品"] },
@@ -77,8 +82,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "store_enabled", label: "商城启用", type: "bool" },
     { key: "store_price", label: "商城价格", type: "number" },
     { key: "image_url", label: "图片 URL", type: "text" },
-  ],
-  events: [
+  ]),
+  events: asImage([
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["机缘","劫难","奇遇"] },
     { key: "description", label: "描述", type: "textarea" },
@@ -87,8 +92,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "condition_json", label: "触发条件", type: "json", jsonKind: "conditions" },
     { key: "drop_pool_id", label: "掉落池 ID", type: "number" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  tasks: [
+  ]),
+  tasks: asImage([
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["日常","悬赏","宗门","成就","主线","支线"] },
     { key: "description", label: "描述", type: "textarea" },
@@ -98,8 +103,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "weight", label: "权重", type: "number" },
     { key: "daily", label: "每日刷新", type: "bool" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  skills: [
+  ]),
+  skills: asImage([
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","均衡"] },
     { key: "rarity", label: "稀有度", type: "text" },
@@ -107,8 +112,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "description", label: "描述", type: "textarea" },
     { key: "effect_json", label: "实际效果", type: "json", jsonKind: "pairs" },
     { key: "upgrade_json", label: "升级规则", type: "json", jsonKind: "pairs" },
-  ],
-  pets: [
+  ]),
+  pets: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "initial_power", label: "初始战力", type: "number" },
@@ -117,8 +122,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "evolution_condition", label: "进化条件", type: "json", jsonKind: "conditions" },
     { key: "evolution_target", label: "进化目标", type: "text" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  dungeons: [
+  ]),
+  dungeons: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "difficulty", label: "难度", type: "select", options: ["普通","困难","噩梦","地狱"] },
@@ -128,8 +133,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "daily_limit", label: "每日次数", type: "number" },
     { key: "enabled", label: "启用", type: "bool" },
     { key: "image_url", label: "图片 URL", type: "text" },
-  ],
-  recipes: [
+  ]),
+  recipes: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "materials_json", label: "所需材料", type: "json", jsonKind: "materials" },
@@ -137,8 +142,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "success_rate", label: "成功率", type: "number" },
     { key: "description", label: "说明", type: "textarea" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  artifacts: [
+  ]),
+  artifacts: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "slot", label: "穿戴槽位", type: "select", options: ["本命法器","冠冕","道袍","护腕","腰佩","灵靴","戒指","项链","护符","阵盘"] },
@@ -155,8 +160,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "source_json", label: "获取来源", type: "json", jsonKind: "pairs" },
     { key: "max_level", label: "强化上限", type: "number" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  synthesis_recipes: [
+  ]),
+  synthesis_recipes: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "配方名称", type: "text" },
     { key: "category", label: "分类", type: "text" },
@@ -169,8 +174,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "description", label: "配方说明", type: "textarea" },
     { key: "enabled", label: "启用", type: "bool" },
     { key: "sort_order", label: "排序", type: "number" },
-  ],
-  locations: [
+  ]),
+  locations: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "地点名称", type: "text" },
     { key: "region", label: "所属区域", type: "text" },
@@ -198,8 +203,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "neighbors_json", label: "相邻地点", type: "json", jsonKind: "pairs" },
     { key: "enabled", label: "启用", type: "bool" },
     { key: "sort_order", label: "排序", type: "number" },
-  ],
-  world_leylines: [
+  ]),
+  world_leylines: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "灵脉名称", type: "text" },
     { key: "region", label: "所属界域", type: "text" },
@@ -222,8 +227,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "image_url", label: "图片 URL", type: "text" },
     { key: "enabled", label: "启用", type: "bool" },
     { key: "sort_order", label: "排序", type: "number" },
-  ],
-  arena_tiers: [
+  ]),
+  arena_tiers: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "段位名称", type: "text" },
     { key: "sequence", label: "段位顺序", type: "number" },
@@ -232,16 +237,16 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "daily_silver", label: "每日银币", type: "number" },
     { key: "description", label: "段位道意", type: "textarea" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  titles: [
+  ]),
+  titles: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "称号名", type: "text" },
     { key: "condition", label: "获取条件", type: "textarea" },
     { key: "attribute_bonus", label: "称号属性", type: "json", jsonKind: "pairs" },
     { key: "type", label: "类型", type: "text" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  activities: [
+  ]),
+  activities: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "活动名", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["修炼","探索","战斗","渡劫"] },
@@ -250,8 +255,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "effect", label: "效果", type: "textarea" },
     { key: "effect_json", label: "实际效果", type: "json", jsonKind: "pairs" },
     { key: "status", label: "状态", type: "select", options: ["未开始","进行中","已结束"] },
-  ],
-  mails: [
+  ]),
+  mails: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "title", label: "标题", type: "text" },
     { key: "content", label: "正文", type: "textarea" },
@@ -261,14 +266,14 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "target_id", label: "目标玩家", type: "text" },
     { key: "expires_at", label: "过期时间", type: "datetime" },
     { key: "sent", label: "已发送", type: "bool" },
-  ],
-  checkin: [
+  ]),
+  checkin: asImage([
     { key: "day", label: "天数", type: "number" },
     { key: "item_name", label: "奖励物品", type: "text" },
     { key: "quantity", label: "奖励数量", type: "number" },
     { key: "special_reward", label: "特殊奖励", type: "text" },
-  ],
-  shop: [
+  ]),
+  shop: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "item_id", label: "物品 ID", type: "number" },
     { key: "item_name", label: "物品名", type: "text" },
@@ -276,24 +281,24 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "price", label: "价格", type: "number" },
     { key: "sort", label: "排序", type: "number" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  cdks: [
+  ]),
+  cdks: asImage([
     { key: "code", label: "兑换码", type: "text" },
     { key: "reward_json", label: "奖励项目", type: "json", jsonKind: "rewards" },
     { key: "max_uses", label: "最大次数", type: "number" },
     { key: "used_count", label: "已使用", type: "number" },
     { key: "expires_at", label: "过期时间", type: "datetime" },
     { key: "status", label: "状态", type: "select", options: ["有效","已过期","已用完"] },
-  ],
-  notices: [
+  ]),
+  notices: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "title", label: "标题", type: "text" },
     { key: "content", label: "正文", type: "textarea" },
     { key: "type", label: "发布频道", type: "select", options: ["公告","更新","修复","全区通报"] },
     { key: "pinned", label: "置顶", type: "bool" },
     { key: "published", label: "已发布", type: "bool" },
-  ],
-  players: [
+  ]),
+  players: asImage([
     { key: "account_id", label: "账号", type: "text" },
     { key: "dao_name", label: "道号", type: "text" },
     { key: "avatar_url", label: "头像 URL", type: "text" },
@@ -331,8 +336,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "state", label: "状态", type: "text" },
     { key: "banned", label: "封禁", type: "bool" },
     { key: "ban_reason", label: "封禁原因", type: "textarea" },
-  ],
-  couples: [
+  ]),
+  couples: asImage([
     { key: "player_a_id", label: "玩家 A ID", type: "number" },
     { key: "player_b_id", label: "玩家 B ID", type: "number" },
     { key: "player_a_name", label: "玩家 A", type: "text" },
@@ -343,8 +348,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "joint_attack_bonus", label: "合击加成", type: "number" },
     { key: "status", label: "状态", type: "text" },
     { key: "notes", label: "备注", type: "textarea" },
-  ],
-  menus: [
+  ]),
+  menus: asImage([
     { key: "parent_id", label: "父菜单 ID", type: "number" },
     { key: "menu_type", label: "菜单类型", type: "select", options: ["side","top","both"] },
     { key: "label", label: "菜单名称", type: "text" },
@@ -360,8 +365,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "badge_type", label: "角标类型", type: "select", options: ["","dot","count"] },
     { key: "badge_value", label: "角标数值", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["active","inactive"] },
-  ],
-  reviews: [
+  ]),
+  reviews: asImage([
     { key: "type", label: "内容类型", type: "select", options: ["道号","日记","三生石","传音","留言","灵根定制","称号定制","仙府定制","灵兽定制","法宝定制","BUG反馈","玩法建议"] },
     { key: "player_id", label: "玩家 ID", type: "number" },
     { key: "player_name", label: "玩家道号", type: "text" },
@@ -373,60 +378,60 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "resolution", label: "处理结果", type: "textarea" },
     { key: "reviewed_at", label: "审核时间", type: "datetime" },
     { key: "resolved_at", label: "完成时间", type: "datetime" },
-  ],
-  sensitive_words: [
+  ]),
+  sensitive_words: asImage([
     { key: "word", label: "敏感词", type: "text" },
     { key: "replacement", label: "替换内容", type: "text" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  server_status: [
+  ]),
+  server_status: asImage([
     { key: "metric", label: "服务器指标", type: "text" },
     { key: "value", label: "当前值", type: "text" },
-  ],
-  online_monitor: [
+  ]),
+  online_monitor: asImage([
     { key: "metric", label: "在线指标", type: "text" },
     { key: "value", label: "当前值", type: "text" },
-  ],
-  request_stats: [
+  ]),
+  request_stats: asImage([
     { key: "metric", label: "请求指标", type: "text" },
     { key: "value", label: "当前值", type: "text" },
-  ],
-  slow_queries: [
+  ]),
+  slow_queries: asImage([
     { key: "sql", label: "SQL", type: "textarea" },
     { key: "duration_ms", label: "耗时(ms)", type: "number" },
     { key: "source", label: "来源", type: "text" },
     { key: "created_at", label: "发生时间", type: "text" },
-  ],
-  performance: [
+  ]),
+  performance: asImage([
     { key: "metric", label: "性能指标", type: "text" },
     { key: "value", label: "当前值", type: "text" },
-  ],
-  alerts: [
+  ]),
+  alerts: asImage([
     { key: "key", label: "告警项", type: "text" },
     { key: "value", label: "阈值", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["int","float","bool"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  status_display: [
+  ]),
+  status_display: asImage([
     { key: "key", label: "配置项", type: "text" },
     { key: "value", label: "图片模式（关闭后使用文字）", type: "bool" },
     { key: "value_type", label: "类型", type: "select", options: ["bool"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  owner_settings: [
+  ]),
+  owner_settings: asImage([
     { key: "key", label: "主人配置项", type: "text" },
     { key: "value", label: "QQ开放平台用户ID", type: "text" },
     { key: "value_type", label: "类型", type: "select", options: ["string"] },
     { key: "description", label: "说明", type: "textarea" },
-  ],
-  managers: [
+  ]),
+  managers: asImage([
     { key: "user_id", label: "管理员用户ID", type: "text" },
     { key: "name", label: "管理员名称", type: "text" },
     { key: "role", label: "权限层级", type: "select", options: ["护法","长老","宗主","仙尊","道祖"] },
     { key: "permissions", label: "权限备注", type: "textarea" },
     { key: "enabled", label: "启用", type: "bool" },
-  ],
-  formations: [
+  ]),
+  formations: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -437,8 +442,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  talismans: [
+  ]),
+  talismans: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -449,8 +454,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  puppets_config: [
+  ]),
+  puppets_config: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -461,8 +466,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  secret_conflicts: [
+  ]),
+  secret_conflicts: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -473,8 +478,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  inheritances: [
+  ]),
+  inheritances: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -485,8 +490,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  dao_insights: [
+  ]),
+  dao_insights: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -497,8 +502,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  battlefields: [
+  ]),
+  battlefields: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -509,8 +514,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  root_evolutions: [
+  ]),
+  root_evolutions: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -521,8 +526,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  inner_demons: [
+  ]),
+  inner_demons: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -533,8 +538,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  couple_skills: [
+  ]),
+  couple_skills: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -545,8 +550,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  immortal_herbs: [
+  ]),
+  immortal_herbs: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -557,8 +562,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  artifact_refinements: [
+  ]),
+  artifact_refinements: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -569,8 +574,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  destiny_deductions: [
+  ]),
+  destiny_deductions: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -581,8 +586,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  leylines: [
+  ]),
+  leylines: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -593,8 +598,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  sect_wars: [
+  ]),
+  sect_wars: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -605,8 +610,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  immortal_encounters: [
+  ]),
+  immortal_encounters: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -617,8 +622,8 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
-  star_realms: [
+  ]),
+  star_realms: asImage([
     { key: "code", label: "系统编码", type: "system" },
     { key: "name", label: "名称", type: "text" },
     { key: "type", label: "类型", type: "select", options: ["攻击","防御","辅助","成长"] },
@@ -629,5 +634,5 @@ export const FIELDS_BY_RESOURCE: Record<string, FieldDef[]> = {
     { key: "prerequisite", label: "解锁条件", type: "json", jsonKind: "conditions" },
     { key: "sort_order", label: "排序", type: "number" },
     { key: "status", label: "状态", type: "select", options: ["启用","停用"] },
-  ],
+  ]),
 }

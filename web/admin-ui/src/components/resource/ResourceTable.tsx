@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react"
+import { Ban, CheckCircle2, Trash2 as TrashAll } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   type ColumnDef, type SortingState, flexRender,
   getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
 } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { ResourceDef } from "@/lib/resources/types"
 import type { ResourceRecord } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -26,6 +28,8 @@ interface Props {
   onCreate: () => void
   onEdit: (record: ResourceRecord) => void
   onDelete: (record: ResourceRecord) => void
+  onBatchDelete?: (records: ResourceRecord[]) => void
+  onBatchToggle?: (records: ResourceRecord[], enabled: boolean) => void
 }
 
 function cellText(v: unknown): string {
@@ -35,18 +39,70 @@ function cellText(v: unknown): string {
   return s.length > 60 ? s.slice(0, 60) + "…" : s
 }
 
-export function ResourceTable({ def, records, isLoading, isError, onCreate, onEdit, onDelete }: Props) {
+export function ResourceTable({ def, records, isLoading, isError, onCreate, onEdit, onDelete, onBatchDelete, onBatchToggle }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [keyword, setKeyword] = useState("")
   const [page, setPage] = useState(0)
   const [pageSize] = useState(10)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  const rowKey = (r: ResourceRecord) => String(r.id)
+  const toggleRow = (r: ResourceRecord) => {
+    setSelected((s) => {
+      const next = new Set(s)
+      const k = rowKey(r)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
+  const toggleAllVisible = () => {
+    setSelected((s) => {
+      const visible = filteredRows.map(rowKey)
+      const allIn = visible.every((k) => s.has(k))
+      const next = new Set(s)
+      for (const k of visible) {
+        if (allIn) next.delete(k)
+        else next.add(k)
+      }
+      return next
+    })
+  }
+  const selectedRecords = () => records.filter((r) => selected.has(rowKey(r)))
+  const clearSelection = () => setSelected(new Set())
 
   const fields = def.fields ?? []
+  const filteredRows = useMemo(() => {
+    if (!keyword) return records
+    const kw = keyword.toLowerCase()
+    return records.filter((r) => Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(kw)))
+  }, [records, keyword])
+
   const columns = useMemo<ColumnDef<ResourceRecord>[]>(() => {
-    const cols: ColumnDef<ResourceRecord>[] = fields
+    const cols: ColumnDef<ResourceRecord>[] = [
+      {
+        id: "select",
+        header: () => (
+          <Checkbox
+            checked={filteredRows.length > 0 && filteredRows.every((r) => selected.has(rowKey(r)))}
+            onCheckedChange={toggleAllVisible}
+            aria-label="全选本页"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={selected.has(rowKey(row.original))}
+            onCheckedChange={() => toggleRow(row.original)}
+            aria-label="选择该行"
+          />
+        ),
+        enableSorting: false,
+      },
+    ]
+    cols.push(...fields
       .filter((f) => f.type !== "json" && f.type !== "textarea")
       .slice(0, 7)
-      .map((f) => ({
+      .map((f): ColumnDef<ResourceRecord> => ({
         accessorKey: f.key,
         header: f.label,
         cell: ({ row }) => {
@@ -60,7 +116,7 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
           }
           return <span className="text-muted-foreground">{cellText(v)}</span>
         },
-      }))
+      })))
     cols.push({
       id: "actions",
       header: "操作",
@@ -77,7 +133,7 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
       ),
     })
     return cols
-  }, [fields, onEdit, onDelete])
+  }, [fields, onEdit, onDelete, selected, filteredRows])
 
   const table = useReactTable({
     data: records,
@@ -90,15 +146,9 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
     initialState: { pagination: { pageIndex: page, pageSize } },
   })
 
-  const filtered = useMemo(() => {
-    if (!keyword) return records
-    const kw = keyword.toLowerCase()
-    return records.filter((r) => Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(kw)))
-  }, [records, keyword])
-
   // 分页与过滤同步
   const safeTable = table
-  safeTable.setOptions((prev) => ({ ...prev, data: filtered }))
+  safeTable.setOptions((prev) => ({ ...prev, data: filteredRows }))
   const rows = table.getRowModel().rows
   const pageCount = Math.max(1, table.getPageCount())
   const pageIndex = Math.min(table.getState().pagination.pageIndex, pageCount - 1)
@@ -121,6 +171,32 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
         </Button>
       </div>
 
+      {selected.size > 0 && (onBatchDelete || onBatchToggle) && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-wrap items-center gap-2 rounded-lg border bg-accent/40 px-3 py-2"
+        >
+          <span className="text-sm font-medium">已选 {selected.size} 条</span>
+          {onBatchToggle && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => { onBatchToggle(selectedRecords(), true); clearSelection() }}>
+                <CheckCircle2 className="h-3.5 w-3.5" /> 批量启用
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { onBatchToggle(selectedRecords(), false); clearSelection() }}>
+                <Ban className="h-3.5 w-3.5" /> 批量停用
+              </Button>
+            </>
+          )}
+          {onBatchDelete && (
+            <Button size="sm" variant="destructive" onClick={() => { onBatchDelete(selectedRecords()); clearSelection() }}>
+              <TrashAll className="h-3.5 w-3.5" /> 批量删除
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={clearSelection}>取消选择</Button>
+        </motion.div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -129,9 +205,18 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
             </div>
           ) : isError ? (
             <div className="p-10 text-center text-sm text-muted-foreground">数据加载失败，请确认管理后台 API 可访问</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              {keyword ? "没有匹配的记录" : "暂无数据，点击右上角新增"}
+          ) : filteredRows.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 p-12 text-center">
+              {keyword ? (
+                <span className="text-sm text-muted-foreground">没有匹配「{keyword}」的记录</span>
+              ) : (
+                <>
+                  <span className="text-sm text-muted-foreground">{def.title}还没有数据</span>
+                  <Button size="sm" variant="outline" onClick={onCreate}>
+                    <Plus className="h-3.5 w-3.5" /> 创建第一条
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
             <Table>
@@ -182,9 +267,9 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
         </CardContent>
       </Card>
 
-      {filtered.length > pageSize && (
+      {filteredRows.length > pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>共 {filtered.length} 条 · 第 {pageIndex + 1}/{pageCount} 页</span>
+          <span>共 {filteredRows.length} 条 · 第 {pageIndex + 1}/{pageCount} 页</span>
           <div className="flex gap-1">
             <Button variant="outline" size="icon" className="h-8 w-8" disabled={pageIndex === 0} onClick={() => table.previousPage()}>
               <ChevronLeft className="h-4 w-4" />
