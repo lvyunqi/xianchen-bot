@@ -49,6 +49,14 @@ jobs:
           name: cargo-lock
           path: plugin/Cargo.lock
           if-no-files-found: error
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        run: |
+          cd "$GITHUB_WORKSPACE/web/admin-ui"
+          npm install --no-audit --no-fund
+          npm run build
       - name: build embedded worker
         run: |
           mkdir -p plugin/embedded
