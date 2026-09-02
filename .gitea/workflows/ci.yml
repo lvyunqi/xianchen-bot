@@ -57,6 +57,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: plugin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: prepare embedded worker
         run: |
           cd ..
@@ -93,6 +101,14 @@ jobs:
           go-version-file: go.mod
           cache: false
       - uses: taiki-e/install-action@cargo-xwin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: build Windows worker
         run: |
           mkdir -p plugin/embedded

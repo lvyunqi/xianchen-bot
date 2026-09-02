@@ -1,7 +1,7 @@
 import {
   Activity, BookOpen, Boxes, Brain, Coins, Database, FlaskConical, Gamepad2,
   Gauge, Gem, Globe2, Heart, Home, Images, LayoutDashboard, ListTree,
-  Mail, Map, Package, ScrollText, Settings, Shield, ShieldAlert, ShoppingBag,
+  Mail, Map as MapIcon, Package, ScrollText, Settings, Shield, ShieldAlert, ShoppingBag,
   Sparkles, Star, Store, Sword, Timer, Ticket, Users, Wand2, Webhook, Zap,
   type LucideIcon,
 } from "lucide-react"
@@ -33,7 +33,7 @@ const PAGES: PageMeta[] = [
   { key: "recipes", title: "丹方数据", description: "丹方材料、产物和成功率", group: "内容配置", icon: FlaskConical },
   { key: "artifacts", title: "器谱数据", description: "法宝材料、属性和强化上限", group: "内容配置", icon: Gem },
   { key: "synthesis_recipes", title: "合成配方", description: "材料合成、产物、成功率与前置条件", group: "内容配置", icon: Boxes },
-  { key: "locations", title: "地图数据", description: "地点、区域、通行路线、境界条件与体力消耗", group: "内容配置", icon: Map },
+  { key: "locations", title: "地图数据", description: "地点、区域、通行路线、境界条件与体力消耗", group: "内容配置", icon: MapIcon },
   { key: "world_leylines", title: "修仙界灵脉", description: "一千条地域灵脉、阶级、前置与独立加成", group: "内容配置", icon: Globe2 },
   { key: "titles", title: "称号数据", description: "称号条件、类型与属性加成", group: "运营数据", icon: Star },
   { key: "activities", title: "活动数据", description: "活动时间、效果参数与状态", group: "运营数据", icon: Activity },
