@@ -229,28 +229,23 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
               )}
             </div>
           ) : virtualEnabled ? (
-            <div className="overflow-x-auto scrollbar-thin">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-card">
-                  {table.getHeaderGroups().map((hg) => (
-                    <TableRow key={hg.id}>
-                      {hg.headers.map((h) => (
-                        <TableHead key={h.id}>
-                          {h.column.getCanSort() ? (
-                            <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={h.column.getToggleSortingHandler()}>
-                              {flexRender(h.column.columnDef.header, h.getContext())}
-                              {h.column.getIsSorted() === "asc" && <ArrowUp className="h-3 w-3" />}
-                              {h.column.getIsSorted() === "desc" && <ArrowDown className="h-3 w-3" />}
-                            </button>
-                          ) : (
-                            flexRender(h.column.columnDef.header, h.getContext())
-                          )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-              </Table>
+            <div>
+              {/* 虚拟模式：表头与数据行使用同一套 flex 列布局，保证对齐 */}
+              <div className="sticky top-0 z-10 flex h-10 items-center border-b bg-card px-3 text-xs font-medium text-muted-foreground">
+                {table.getHeaderGroups()[0]?.headers.map((h) => (
+                  <div key={h.id} className={h.column.id === "select" ? "w-9 shrink-0" : "min-w-0 flex-1"}>
+                    {h.column.getCanSort() ? (
+                      <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={h.column.getToggleSortingHandler()}>
+                        {flexRender(h.column.columnDef.header, h.getContext())}
+                        {h.column.getIsSorted() === "asc" && <ArrowUp className="h-3 w-3" />}
+                        {h.column.getIsSorted() === "desc" && <ArrowDown className="h-3 w-3" />}
+                      </button>
+                    ) : (
+                      flexRender(h.column.columnDef.header, h.getContext())
+                    )}
+                  </div>
+                ))}
+              </div>
               <div ref={scrollRef} className="max-h-[560px] overflow-y-auto scrollbar-thin">
                 <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
                   {rowVirtualizer.getVirtualItems().map((vi) => {
@@ -265,13 +260,13 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
                           transform: `translateY(${vi.start}px)`,
                           height: vi.size,
                         }}
-                        className="flex items-center border-b text-sm transition-colors hover:bg-muted/50"
+                        className="flex items-center border-b px-3 text-sm transition-colors hover:bg-muted/50"
                         onDoubleClick={() => onEdit(row.original)}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="flex-1 min-w-0">
+                          <div key={cell.id} className={cell.column.id === "select" ? "w-9 shrink-0" : "min-w-0 flex-1 truncate pr-2"}>
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
+                          </div>
                         ))}
                       </div>
                     )
