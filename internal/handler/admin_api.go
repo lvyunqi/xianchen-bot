@@ -84,13 +84,15 @@ var adminResources = map[string]resourceSpec{
 }
 
 type AdminAPI struct {
-	store     *storage.Store
-	static    fs.FS
-	uploadDir string
+	store        *storage.Store
+	static       fs.FS
+	uploadDir    string
+	customRoutes map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
 func NewAdminMux(store *storage.Store, static fs.FS, uploadDir string) http.Handler {
-	api := &AdminAPI{store: store, static: static, uploadDir: uploadDir}
+	api := &AdminAPI{store: store, static: static, uploadDir: uploadDir, customRoutes: map[string]func(w http.ResponseWriter, r *http.Request){}}
+	api.registerDatabaseOps()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", api.handleAPI)
 	mux.HandleFunc("/uploads/", api.serveUpload)
@@ -146,6 +148,10 @@ func (a *AdminAPI) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	if segments[0] == "upload" {
 		a.uploadImage(w, r)
+		return
+	}
+	if route, ok := a.customRoutes[segments[0]]; ok {
+		route(w, r)
 		return
 	}
 	if spec, ok := adminResources[segments[0]]; ok {

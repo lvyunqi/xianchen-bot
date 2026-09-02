@@ -12,6 +12,6 @@ func sqliteDialector(path string) gorm.Dialector {
 	if err == nil {
 		path = absolute
 	}
-	dsn := "file:" + filepath.ToSlash(path) + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)"
+	dsn := "file:" + filepath.ToSlash(path) + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=auto_vacuum(INCREMENTAL)"
 	return sqlite.Open(dsn)
 }

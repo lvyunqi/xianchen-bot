@@ -551,6 +551,9 @@ func (g *Game) claimRankingReward(player *model.Player, raw string) (GameResult,
 	return GameResult{Title: "前十俸禄", Content: content, Actions: []string{"排行 " + kind, "我的称号", "全区通报", "状态"}, BroadcastContent: rewardBroadcast}, true, nil
 }
 
+// noticeBoardLimit 限制公告板单次加载的公告数量。
+const noticeBoardLimit = 200
+
 func (g *Game) noticeBoard(raw, typeFilter string) (GameResult, bool, error) {
 	query := g.store.DB.Model(&model.Notice{}).Where("published = ?", true)
 	if typeFilter != "" {
@@ -559,7 +562,8 @@ func (g *Game) noticeBoard(raw, typeFilter string) (GameResult, bool, error) {
 		query = query.Where("type = ?", "公告")
 	}
 	var notices []model.Notice
-	if err := query.Order("pinned DESC, published_at DESC, id DESC").Find(&notices).Error; err != nil {
+	// 公告上限：种子目录会生成上千条公告，无界加载会拖垮内存与响应；置顶优先，取最近 noticeBoardLimit 条。
+	if err := query.Order("pinned DESC, published_at DESC, id DESC").Limit(noticeBoardLimit).Find(&notices).Error; err != nil {
 		return GameResult{}, true, err
 	}
 	title := "仙门公告"
