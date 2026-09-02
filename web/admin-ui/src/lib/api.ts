@@ -7,10 +7,15 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  })
+  let res: Response
+  try {
+    res = await fetch(path, {
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      ...init,
+    })
+  } catch {
+    throw new ApiError(0, "网络错误，无法连接管理后台")
+  }
   if (!res.ok) {
     let message = `请求失败（${res.status}）`
     try {

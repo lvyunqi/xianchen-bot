@@ -76,9 +76,16 @@ export function ReadonlyStats({ title, records, isLoading, isError }: Props) {
                     tick={{ fontSize: 11, fill: "hsl(220 8% 72%)" }} axisLine={false} tickLine={false}
                   />
                   <Tooltip
-                    cursor={{ fill: "hsl(220 20% 14%)" }}
-                    contentStyle={{ background: "hsl(220 18% 9%)", border: "1px solid hsl(220 12% 20%)", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "hsl(220 8% 72%)" }}
+                    cursor={false}
+                    contentStyle={{
+                      background: "var(--popover)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      color: "var(--popover-foreground)",
+                    }}
+                    labelStyle={{ color: "var(--muted-foreground)" }}
+                    itemStyle={{ color: "var(--foreground)" }}
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                     {numeric.map((_, i) => (
