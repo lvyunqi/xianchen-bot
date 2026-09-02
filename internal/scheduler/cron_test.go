@@ -39,7 +39,7 @@ func TestParseCronRejectsBadInput(t *testing.T) {
 }
 
 func TestParseCronStepAndRange(t *testing.T) {
-	spec, err := ParseCron("*/15 5-10 1,15 3 * *")
+	spec, err := ParseCron("*/15 45 1,15 3 * *")
 	if err != nil {
 		t.Fatalf("ParseCron: %v", err)
 	}
@@ -49,6 +49,18 @@ func TestParseCronStepAndRange(t *testing.T) {
 	}
 	at2, _ := time.Parse(time.RFC3339, "2026-03-15T01:50:00Z")
 	if spec.Matches(at2) {
-		t.Errorf("不应命中 01:50:00Z（秒步长 15 的倍数 50 不在集合内）")
+		t.Errorf("不应命中 01:50:00Z（分钟段固定为 45）")
+	}
+	rangeSpec, err := ParseCron("0 0 0 1-5 * *")
+	if err != nil {
+		t.Fatalf("ParseCron range: %v", err)
+	}
+	at3, _ := time.Parse(time.RFC3339, "2026-09-03T00:00:00Z")
+	if !rangeSpec.Matches(at3) {
+		t.Errorf("日段区间 1-5 应命中 3 号")
+	}
+	at4, _ := time.Parse(time.RFC3339, "2026-09-06T00:00:00Z")
+	if rangeSpec.Matches(at4) {
+		t.Errorf("日段区间 1-5 不应命中 6 号")
 	}
 }
