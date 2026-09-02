@@ -86,6 +86,11 @@ jobs:
           curl -fsSL https://go.dev/dl/go1.23.0.linux-amd64.tar.gz -o /tmp/go.tar.gz
           tar -C /usr/local -xzf /tmp/go.tar.gz
           echo "/usr/local/go/bin" >> "$GITHUB_PATH"
+      - name: build admin UI
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: build embedded worker
         run: |
           mkdir -p plugin/embedded
@@ -139,6 +144,14 @@ jobs:
           go-version-file: go.mod
           cache: false
       - uses: taiki-e/install-action@cargo-xwin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: build Windows worker
         run: |
           mkdir -p plugin/embedded

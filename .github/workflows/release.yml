@@ -74,6 +74,14 @@ jobs:
       TARGET: x86_64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: install go and build embedded worker
         run: |
           apt-get update -qq
@@ -127,6 +135,15 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build admin UI
+        shell: pwsh
+        run: |
+          cd web/admin-ui
+          npm install --no-audit --no-fund
+          npm run build
       - name: build windows worker
         shell: pwsh
         run: |
