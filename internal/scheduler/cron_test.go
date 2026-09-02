@@ -39,7 +39,7 @@ func TestParseCronRejectsBadInput(t *testing.T) {
 }
 
 func TestParseCronStepAndRange(t *testing.T) {
-	spec, err := ParseCron("*/15 45 1,15 3 * *")
+	spec, err := ParseCron("*/15 45 1 15 3 *")
 	if err != nil {
 		t.Fatalf("ParseCron: %v", err)
 	}

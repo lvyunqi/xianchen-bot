@@ -25,6 +25,12 @@ func retentionTestStore(t *testing.T) *Store {
 	if err := db.AutoMigrate(&model.SocialMessage{}, &model.GameLog{}, &model.Broadcast{}, &model.TradeListing{}, &model.PlayerValue{}, &model.RankEntry{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	t.Cleanup(func() {
+		// Windows 下 WAL 文件被连接池占用会导致 TempDir 清理失败，测试结束显式关池。
+		if sqlDB, err := db.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
 	return &Store{DB: db, cfg: config.Config{}}
 }
 
