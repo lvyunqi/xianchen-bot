@@ -52,7 +52,11 @@ const retentionBatchSize = 5000
 func (s *Store) RunRetention(ctx context.Context) (map[string]int64, error) {
 	stats := map[string]int64{}
 	now := time.Now()
+	tables := s.existingTables()
 	for _, p := range retentionPolicies {
+		if !tables[p.Table] {
+			continue // 老库或测试库未建该表，跳过
+		}
 		column := p.TimeColumn
 		if column == "" {
 			column = "created_at"
@@ -67,6 +71,9 @@ func (s *Store) RunRetention(ctx context.Context) (map[string]int64, error) {
 		}
 	}
 	for _, p := range expiryPolicies {
+		if !tables[p.Table] {
+			continue
+		}
 		cond := p.TimeColumn + " < ?"
 		args := []any{now}
 		if p.Nullable {
@@ -90,6 +97,25 @@ func (s *Store) RunRetention(ctx context.Context) (map[string]int64, error) {
 
 func (s *Store) deleteInBatches(ctx context.Context, table, column string, cutoff time.Time) (int64, error) {
 	return s.deleteInBatchesCond(ctx, table, column+" < ?", []any{cutoff})
+}
+
+// existingTables 汇总当前库里的表名（SQLite 用 sqlite_master，Postgres 用 information_schema）。
+func (s *Store) existingTables() map[string]bool {
+	set := map[string]bool{}
+	var names []string
+	var err error
+	if strings.ToLower(s.cfg.Database.Driver) == "postgres" {
+		err = s.DB.Raw("SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()").Scan(&names).Error
+	} else {
+		err = s.DB.Raw("SELECT name FROM sqlite_master WHERE type = 'table'").Scan(&names).Error
+	}
+	if err != nil {
+		return set
+	}
+	for _, n := range names {
+		set[n] = true
+	}
+	return set
 }
 
 // deleteInBatchesCond 按 WHERE 条件批量删除，每批上限 retentionBatchSize，跨 SQLite/Postgres 通用。

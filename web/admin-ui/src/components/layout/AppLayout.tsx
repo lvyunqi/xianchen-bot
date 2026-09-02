@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { Menu, Moon, RefreshCw, Sun, X } from "lucide-react"
+import { Database, Menu, Moon, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
 import { useTheme } from "@/lib/theme"
@@ -47,6 +47,27 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
           </div>
         </div>
       ))}
+      <div>
+        {!compact && (
+          <div className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            系统工具
+          </div>
+        )}
+        <NavLink
+          to="/database"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+              isActive && "bg-accent text-accent-foreground font-medium",
+              compact && "justify-center px-0",
+            )
+          }
+        >
+          <Database className="h-4 w-4 shrink-0" />
+          {!compact && <span>数据运维</span>}
+        </NavLink>
+      </div>
     </nav>
   )
 }

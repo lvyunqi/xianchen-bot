@@ -43,12 +43,12 @@ func TestParseCronStepAndRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseCron: %v", err)
 	}
-	at, _ := time.Parse(time.RFC3339, "2026-03-15T07:45:00Z")
+	at, _ := time.Parse(time.RFC3339, "2026-03-15T01:45:00Z")
 	if !spec.Matches(at) {
-		t.Errorf("应命中 2026-03-15T07:45:00Z")
+		t.Errorf("应命中 2026-03-15T01:45:00Z")
 	}
-	at2, _ := time.Parse(time.RFC3339, "2026-03-15T07:50:00Z")
+	at2, _ := time.Parse(time.RFC3339, "2026-03-15T01:50:00Z")
 	if spec.Matches(at2) {
-		t.Errorf("不应命中 07:50:00Z（秒步长 15 的倍数 50 不在集合内）")
+		t.Errorf("不应命中 01:50:00Z（秒步长 15 的倍数 50 不在集合内）")
 	}
 }

@@ -62,4 +62,6 @@ export const api = {
   remove: (resource: string, id: number | string) =>
     request<void>(`/api/${resource}/${id}`, { method: "DELETE" }),
   getJson: <T>(path: string) => request<T>(path),
+  postJson: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
 }
