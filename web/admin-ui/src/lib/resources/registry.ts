@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { ResourceDef } from "./types"
-import { FIELD_OVERRIDES } from "./fields"
+import { FIELDS_BY_RESOURCE } from "./legacy-fields"
 
 interface PageMeta {
   key: string
@@ -83,7 +83,7 @@ export const RESOURCES: ResourceDef[] = PAGES.map((p) => ({
   group: p.group,
   icon: p.icon,
   readonly: p.readonly,
-  fields: FIELD_OVERRIDES[p.key],
+  fields: FIELDS_BY_RESOURCE[p.key],
 }))
 
 export const RESOURCE_MAP = new Map(RESOURCES.map((r) => [r.key, r]))
