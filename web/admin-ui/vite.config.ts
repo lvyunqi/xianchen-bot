@@ -19,6 +19,6 @@ export default defineConfig({
     outDir: "../admin",
     emptyOutDir: true,
     sourcemap: false,
-    chunkSizeWarningLimit: 900,
+    chunkSizeWarningLimit: 1200,
   },
 })

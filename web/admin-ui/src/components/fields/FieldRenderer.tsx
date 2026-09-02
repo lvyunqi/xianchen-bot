@@ -39,6 +39,7 @@ export function FieldRenderer({ field, value, onChange, invalid }: Props) {
   )
 
   switch (field.type) {
+    case "image":
     case "number":
       return wrap(
         <Input
@@ -104,6 +105,26 @@ export function FieldRenderer({ field, value, onChange, invalid }: Props) {
           value={value}
           onChange={(json) => onChange(json)}
         />,
+      )
+    case "image":
+      return wrap(
+        <div className="space-y-2">
+          <Input
+            id={id}
+            value={value === null || value === undefined ? "" : String(value)}
+            placeholder="https://…/图片.png"
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {value ? (
+            <img
+              src={String(value)}
+              alt="预览"
+              className="h-16 w-16 rounded-lg border object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.25" }}
+              onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1" }}
+            />
+          ) : null}
+        </div>,
       )
     default:
       return wrap(

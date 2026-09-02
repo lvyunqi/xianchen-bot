@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { RESOURCE_MAP } from "@/lib/resources/registry"
 import { api, type ResourceRecord } from "@/lib/api"
 import { ResourceTable } from "@/components/resource/ResourceTable"
+import { ReadonlyStats } from "@/components/resource/ReadonlyStats"
 import { ResourceForm } from "@/components/resource/ResourceForm"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -23,7 +24,7 @@ export default function ResourcePage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["resource", key],
     queryFn: () => api.list<ResourceRecord>(key),
-    enabled: Boolean(def) && !def?.readonly,
+    enabled: Boolean(def),
   })
 
   const removeMutation = useMutation({
@@ -36,6 +37,38 @@ export default function ResourcePage() {
     onError: (e: Error) => toast.error("删除失败", { description: e.message }),
   })
 
+  const batchDelete = useMutation({
+    mutationFn: async (targets: ResourceRecord[]) => {
+      for (const t of targets) await api.remove(key, t.id as number)
+      return targets.length
+    },
+    onSuccess: (n) => {
+      toast.success(`已删除 ${n} 条`)
+      queryClient.invalidateQueries({ queryKey: ["resource", key] })
+    },
+    onError: (e: Error) => toast.error("批量删除失败", { description: e.message }),
+  })
+
+  const batchToggle = useMutation({
+    mutationFn: async ({ targets, enabled }: { targets: ResourceRecord[]; enabled: boolean }) => {
+      let n = 0
+      for (const t of targets) {
+        try {
+          await api.update(key, t.id as number, { enabled })
+          n++
+        } catch {
+          /* 单条失败不中断 */
+        }
+      }
+      return n
+    },
+    onSuccess: (n) => {
+      toast.success(`已更新 ${n} 条`)
+      queryClient.invalidateQueries({ queryKey: ["resource", key] })
+    },
+    onError: (e: Error) => toast.error("批量更新失败", { description: e.message }),
+  })
+
   if (!def) {
     return (
       <Card>
@@ -45,15 +78,7 @@ export default function ResourcePage() {
   }
 
   if (def.readonly) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-2 p-10 text-center">
-          <def.icon className="h-8 w-8 text-muted-foreground" />
-          <div className="font-medium">{def.title}</div>
-          <div className="text-sm text-muted-foreground">监控页将在 M4 阶段提供图表视图</div>
-        </CardContent>
-      </Card>
-    )
+    return <ReadonlyStats title={def.title} records={data ?? []} isLoading={isLoading} isError={isError} />
   }
 
   return (
@@ -66,6 +91,8 @@ export default function ResourcePage() {
         onCreate={() => { setEditing(null); setFormOpen(true) }}
         onEdit={(r) => { setEditing(r); setFormOpen(true) }}
         onDelete={(r) => setDeleting(r)}
+        onBatchDelete={(rs) => batchDelete.mutate(rs)}
+        onBatchToggle={(rs, enabled) => batchToggle.mutate({ targets: rs, enabled })}
       />
       <ResourceForm def={def} open={formOpen} onOpenChange={setFormOpen} record={editing} />
       <AlertDialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>
