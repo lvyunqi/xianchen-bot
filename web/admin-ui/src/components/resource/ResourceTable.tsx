@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Ban, CheckCircle2, Trash2 as TrashAll } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import {
   type ColumnDef, type SortingState, flexRender,
   getCoreRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
@@ -146,6 +147,15 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
     initialState: { pagination: { pageIndex: page, pageSize } },
   })
 
+  const virtualEnabled = filteredRows.length > 200
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const rowVirtualizer = useVirtualizer({
+    count: filteredRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 44,
+    overscan: 12,
+  })
+
   // 分页与过滤同步
   const safeTable = table
   safeTable.setOptions((prev) => ({ ...prev, data: filteredRows }))
@@ -218,56 +228,109 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
                 </>
               )}
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((hg) => (
-                  <TableRow key={hg.id}>
-                    {hg.headers.map((h) => (
-                      <TableHead key={h.id}>
-                        {h.column.getCanSort() ? (
-                          <button
-                            className="inline-flex items-center gap-1 hover:text-foreground"
-                            onClick={h.column.getToggleSortingHandler()}
-                          >
-                            {flexRender(h.column.columnDef.header, h.getContext())}
-                            {h.column.getIsSorted() === "asc" && <ArrowUp className="h-3 w-3" />}
-                            {h.column.getIsSorted() === "desc" && <ArrowDown className="h-3 w-3" />}
-                          </button>
-                        ) : (
-                          flexRender(h.column.columnDef.header, h.getContext())
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                <AnimatePresence initial={false}>
-                  {rows.map((row, i) => (
-                    <motion.tr
-                      key={row.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.15, delay: Math.min(i * 0.02, 0.2) }}
-                      className="border-b transition-colors hover:bg-muted/50"
-                      onDoubleClick={() => onEdit(row.original)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
+          ) : virtualEnabled ? (
+            <div className="overflow-x-auto scrollbar-thin">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  {table.getHeaderGroups().map((hg) => (
+                    <TableRow key={hg.id}>
+                      {hg.headers.map((h) => (
+                        <TableHead key={h.id}>
+                          {h.column.getCanSort() ? (
+                            <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={h.column.getToggleSortingHandler()}>
+                              {flexRender(h.column.columnDef.header, h.getContext())}
+                              {h.column.getIsSorted() === "asc" && <ArrowUp className="h-3 w-3" />}
+                              {h.column.getIsSorted() === "desc" && <ArrowDown className="h-3 w-3" />}
+                            </button>
+                          ) : (
+                            flexRender(h.column.columnDef.header, h.getContext())
+                          )}
+                        </TableHead>
                       ))}
-                    </motion.tr>
+                    </TableRow>
                   ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
+                </TableHeader>
+              </Table>
+              <div ref={scrollRef} className="max-h-[560px] overflow-y-auto scrollbar-thin">
+                <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+                  {rowVirtualizer.getVirtualItems().map((vi) => {
+                    const row = table.getPrePaginationRowModel().rows[vi.index]
+                    if (!row) return null
+                    return (
+                      <div
+                        key={row.id}
+                        style={{
+                          position: "absolute",
+                          top: 0, left: 0, width: "100%",
+                          transform: `translateY(${vi.start}px)`,
+                          height: vi.size,
+                        }}
+                        className="flex items-center border-b text-sm transition-colors hover:bg-muted/50"
+                        onDoubleClick={() => onEdit(row.original)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id} className="flex-1 min-w-0">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto scrollbar-thin">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((hg) => (
+                    <TableRow key={hg.id}>
+                      {hg.headers.map((h) => (
+                        <TableHead key={h.id}>
+                          {h.column.getCanSort() ? (
+                            <button
+                              className="inline-flex items-center gap-1 hover:text-foreground"
+                              onClick={h.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(h.column.columnDef.header, h.getContext())}
+                              {h.column.getIsSorted() === "asc" && <ArrowUp className="h-3 w-3" />}
+                              {h.column.getIsSorted() === "desc" && <ArrowDown className="h-3 w-3" />}
+                            </button>
+                          ) : (
+                            flexRender(h.column.columnDef.header, h.getContext())
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  <AnimatePresence initial={false}>
+                    {rows.map((row, i) => (
+                      <motion.tr
+                        key={row.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.15, delay: Math.min(i * 0.02, 0.2) }}
+                        className="border-b transition-colors hover:bg-muted/50"
+                        onDoubleClick={() => onEdit(row.original)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {filteredRows.length > pageSize && (
+      {!virtualEnabled && filteredRows.length > pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>共 {filteredRows.length} 条 · 第 {pageIndex + 1}/{pageCount} 页</span>
           <div className="flex gap-1">

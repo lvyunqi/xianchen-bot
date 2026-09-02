@@ -34,6 +34,24 @@ function recordFor(resource, i) {
   switch (resource) {
     case "monitor":
       return [{ metric: "最近5分钟活跃", value: "342" }, { metric: "CPU", value: "23%" }, { metric: "内存", value: "61%" }]
+    case "spiritual_roots":
+    case "world_leylines": {
+      const rows = []
+      for (let i = 1; i <= 1000; i++) {
+        rows.push({
+          id: i,
+          code: "SR" + String(i).padStart(4, "0"),
+          name: "玄阴灵根·第" + i + "品",
+          element: pick(["金", "木", "水", "火", "土", "雷", "冰", "风"], i),
+          grade: pick(["下品", "中品", "上品", "极品"], i),
+          base_quality: 30 + (i % 70),
+          cultivation_bonus: 1 + (i % 9) * 0.1,
+          rarity_weight: 1000 - i,
+          enabled: i % 97 !== 0,
+        })
+      }
+      return rows
+    }
     case "realms":
       return genRecords("realm", {
         name: (i) => pick(names.realms, i - 1) + "期",
