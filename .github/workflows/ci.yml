@@ -62,7 +62,7 @@ jobs:
           node-version: 20
       - name: build admin UI
         run: |
-          cd web/admin-ui
+          cd "$GITHUB_WORKSPACE/web/admin-ui"
           npm install --no-audit --no-fund
           npm run build
       - name: prepare embedded worker
