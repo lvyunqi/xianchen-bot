@@ -31,4 +31,5 @@ go.work.sum
 
 # Web admin: build artifacts come from CI, not the repo
 web/admin/
+web/admin-ui/tsconfig.tsbuildinfo
 node_modules/
