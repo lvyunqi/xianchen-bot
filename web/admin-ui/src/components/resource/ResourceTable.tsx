@@ -43,8 +43,7 @@ function cellText(v: unknown): string {
 export function ResourceTable({ def, records, isLoading, isError, onCreate, onEdit, onDelete, onBatchDelete, onBatchToggle }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [keyword, setKeyword] = useState("")
-  const [page, setPage] = useState(0)
-  const [pageSize] = useState(10)
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const rowKey = (r: ResourceRecord) => String(r.id)
@@ -137,14 +136,14 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
   }, [fields, onEdit, onDelete, selected, filteredRows])
 
   const table = useReactTable({
-    data: records,
+    data: filteredRows,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageIndex: page, pageSize } },
   })
 
   const virtualEnabled = filteredRows.length > 200
@@ -156,13 +155,9 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
     overscan: 12,
   })
 
-  // 分页与过滤同步
-  const safeTable = table
-  safeTable.setOptions((prev) => ({ ...prev, data: filteredRows }))
   const rows = table.getRowModel().rows
   const pageCount = Math.max(1, table.getPageCount())
-  const pageIndex = Math.min(table.getState().pagination.pageIndex, pageCount - 1)
-  if (table.getState().pagination.pageIndex !== pageIndex) table.setPageIndex(pageIndex)
+  const pageIndex = table.getState().pagination.pageIndex
 
   return (
     <div className="space-y-3">
@@ -173,7 +168,7 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
             className="pl-8"
             placeholder={"搜索" + def.title + "…"}
             value={keyword}
-            onChange={(e) => { setKeyword(e.target.value); setPage(0) }}
+            onChange={(e) => { setKeyword(e.target.value); setPagination((p) => ({ ...p, pageIndex: 0 })) }}
           />
         </div>
         <Button onClick={onCreate}>
@@ -325,7 +320,7 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
         </CardContent>
       </Card>
 
-      {!virtualEnabled && filteredRows.length > pageSize && (
+      {!virtualEnabled && filteredRows.length > pagination.pageSize && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>共 {filteredRows.length} 条 · 第 {pageIndex + 1}/{pageCount} 页</span>
           <div className="flex gap-1">
