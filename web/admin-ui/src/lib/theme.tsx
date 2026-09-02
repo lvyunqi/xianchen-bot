@@ -4,7 +4,7 @@ type Theme = "dark" | "light"
 const STORAGE_KEY = "xianchen-admin-theme"
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: "dark",
+  theme: "light",
   toggle: () => {},
 })
 
@@ -17,7 +17,7 @@ function applyTheme(theme: Theme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved === "light" ? "light" : "dark"
+    return saved === "dark" ? "dark" : "light"
   })
 
   useEffect(() => {

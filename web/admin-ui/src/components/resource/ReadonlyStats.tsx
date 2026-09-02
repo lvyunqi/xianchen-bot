@@ -6,7 +6,7 @@ import type { ResourceRecord } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const CHART_COLORS = ["hsl(262 83% 70%)", "hsl(43 92% 58%)", "hsl(199 89% 60%)", "hsl(160 84% 45%)", "hsl(340 75% 65%)", "hsl(27 87% 62%)"]
+const CHART_COLORS = ["hsl(172 55% 45%)", "hsl(43 92% 58%)", "hsl(205 70% 55%)", "hsl(160 60% 42%)", "hsl(27 87% 62%)", "hsl(215 45% 60%)"]
 
 interface Props {
   title: string
@@ -69,16 +69,16 @@ export function ReadonlyStats({ title, records, isLoading, isError }: Props) {
             <CardContent className="h-72 pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={numeric} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(243 12% 20%)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(243 8% 60%)" }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 12% 22%)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(220 8% 60%)" }} axisLine={false} tickLine={false} />
                   <YAxis
                     type="category" dataKey="name" width={120}
-                    tick={{ fontSize: 11, fill: "hsl(243 8% 72%)" }} axisLine={false} tickLine={false}
+                    tick={{ fontSize: 11, fill: "hsl(220 8% 72%)" }} axisLine={false} tickLine={false}
                   />
                   <Tooltip
-                    cursor={{ fill: "hsl(243 20% 14%)" }}
-                    contentStyle={{ background: "hsl(243 18% 9%)", border: "1px solid hsl(243 12% 20%)", borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: "hsl(243 8% 72%)" }}
+                    cursor={{ fill: "hsl(220 20% 14%)" }}
+                    contentStyle={{ background: "hsl(220 18% 9%)", border: "1px solid hsl(220 12% 20%)", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "hsl(220 8% 72%)" }}
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                     {numeric.map((_, i) => (
