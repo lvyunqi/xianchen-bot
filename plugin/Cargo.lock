@@ -219,7 +219,7 @@ dependencies = [
 
 [[package]]
 name = "qimen-dynamic-plugin-xianchen"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "abi-stable-host-api",
  "abi_stable",
