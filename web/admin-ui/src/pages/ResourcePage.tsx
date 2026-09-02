@@ -1,19 +1,39 @@
+import { useState } from "react"
 import { useParams } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { RESOURCE_MAP } from "@/lib/resources/registry"
 import { api, type ResourceRecord } from "@/lib/api"
+import { ResourceTable } from "@/components/resource/ResourceTable"
+import { ResourceForm } from "@/components/resource/ResourceForm"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function ResourcePage() {
   const { key = "" } = useParams()
   const def = RESOURCE_MAP.get(key)
+  const queryClient = useQueryClient()
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<ResourceRecord | null>(null)
+  const [deleting, setDeleting] = useState<ResourceRecord | null>(null)
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["resource", key],
     queryFn: () => api.list<ResourceRecord>(key),
     enabled: Boolean(def) && !def?.readonly,
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: (target: ResourceRecord) => api.remove(key, target.id as number),
+    onSuccess: () => {
+      toast.success("删除成功")
+      queryClient.invalidateQueries({ queryKey: ["resource", key] })
+      setDeleting(null)
+    },
+    onError: (e: Error) => toast.error("删除失败", { description: e.message }),
   })
 
   if (!def) {
@@ -36,58 +56,37 @@ export default function ResourcePage() {
     )
   }
 
-  const records = data ?? []
-  const columns = records.length
-    ? Object.keys(records[0]).filter((k) => k !== "id").slice(0, 8)
-    : []
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">{def.title}</h1>
-        <Badge variant="secondary">{records.length} 条</Badge>
-      </div>
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : isError ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              数据加载失败，请确认管理后台 API 可访问
-            </div>
-          ) : records.length === 0 ? (
-            <div className="p-10 text-center text-sm text-muted-foreground">暂无数据</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columns.map((c) => (
-                    <TableHead key={c}>{c}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.slice(0, 100).map((row, i) => (
-                  <TableRow key={row.id ?? i}>
-                    {columns.map((c) => (
-                      <TableCell key={c} className="max-w-56 truncate text-muted-foreground">
-                        {String(row[c] ?? "-")}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-      <p className="text-xs text-muted-foreground">
-        通用 CRUD 引擎（M2）将带来：搜索、筛选、排序、关联选择器、JSON 构建器与完整编辑。
-      </p>
+      <ResourceTable
+        def={def}
+        records={data ?? []}
+        isLoading={isLoading}
+        isError={isError}
+        onCreate={() => { setEditing(null); setFormOpen(true) }}
+        onEdit={(r) => { setEditing(r); setFormOpen(true) }}
+        onDelete={(r) => setDeleting(r)}
+      />
+      <ResourceForm def={def} open={formOpen} onOpenChange={setFormOpen} record={editing} />
+      <AlertDialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将删除 {def.title}「{deleting ? String(deleting.name ?? deleting.code ?? deleting.id) : ""}」，此操作不可撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => deleting && removeMutation.mutate(deleting)}
+            >
+              {removeMutation.isPending ? "删除中…" : "删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
