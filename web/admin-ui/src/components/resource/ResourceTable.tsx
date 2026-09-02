@@ -221,9 +221,9 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
                 <span className="text-sm text-muted-foreground">没有匹配「{keyword}」的记录</span>
               ) : (
                 <>
-                  <span className="text-sm text-muted-foreground">{def.title}还没有数据</span>
+                  <span className="text-sm text-muted-foreground">暂无{def.title}数据</span>
                   <Button size="sm" variant="outline" onClick={onCreate}>
-                    <Plus className="h-3.5 w-3.5" /> 创建第一条
+                    <Plus className="h-3.5 w-3.5" /> 新增
                   </Button>
                 </>
               )}

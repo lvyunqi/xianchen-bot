@@ -33,7 +33,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">数据总览</h1>
-        <p className="text-sm text-muted-foreground">游戏核心指标一屏速览</p>
+        <p className="text-sm text-muted-foreground">玩家、活跃与运行概况</p>
       </div>
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
