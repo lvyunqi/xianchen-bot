@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -20,6 +20,13 @@ export default function ResourcePage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ResourceRecord | null>(null)
   const [deleting, setDeleting] = useState<ResourceRecord | null>(null)
+
+  // 切换资源时清理上一页遗留的弹窗状态
+  useEffect(() => {
+    setFormOpen(false)
+    setEditing(null)
+    setDeleting(null)
+  }, [key])
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["resource", key],

@@ -97,20 +97,6 @@ export default function AppLayout() {
           </div>
         </aside>
 
-        {/* 移动端抽屉侧栏 */}
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <SheetTitle className="sr-only">导航菜单</SheetTitle>
-            <Brand />
-            <NavList compact={false} onNavigate={() => setMobileOpen(false)} />
-          </SheetContent>
-        </Sheet>
-
         {/* 主区域 */}
         <div className={cn("flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out", collapsed ? "md:pl-14" : "md:pl-60")}>
           <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">

@@ -10,13 +10,15 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 interface Props {
   resource: string
   labelKey: string
+  /** 保存时取记录的哪个字段，默认 code */
+  saveKey?: string
   value: unknown
   onChange: (value: string | number) => void
   placeholder?: string
 }
 
 /** 关联选择器：搜索远端资源，展示名称，保存 ID/编码 */
-export function RelationCombobox({ resource, labelKey, value, onChange, placeholder }: Props) {
+export function RelationCombobox({ resource, labelKey, saveKey, value, onChange, placeholder }: Props) {
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState("")
   const { data } = useQuery({
@@ -63,7 +65,8 @@ export function RelationCombobox({ resource, labelKey, value, onChange, placehol
                   key={String(r.id)}
                   value={String(r.id)}
                   onSelect={() => {
-                    onChange((r.code as string | number) ?? (r.id as number))
+                    const saved = r[saveKey ?? "code"] ?? (r.id as string | number)
+                    onChange(saved as string | number)
                     setOpen(false)
                   }}
                 >

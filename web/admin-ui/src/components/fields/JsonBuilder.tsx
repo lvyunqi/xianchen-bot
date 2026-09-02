@@ -72,7 +72,8 @@ export function JsonBuilder({ kind, value, onChange }: Props) {
     <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-          <ListTree className="h-3.5 w-3.5" /> 结构化编辑 · {rows.length} 项
+          <ListTree className="h-3.5 w-3.5" />
+          {rawMode ? "源码模式（直接编辑 JSON 文本）" : ("结构化编辑 · " + rows.length + " 项")}
         </span>
         <div className="flex gap-1">
           {rawMode ? (
@@ -101,6 +102,7 @@ export function JsonBuilder({ kind, value, onChange }: Props) {
                     key={col}
                     resource="items"
                     labelKey="name"
+                    saveKey="name"
                     value={row[col]}
                     onChange={(v) => updateRow(i, col, v)}
                     placeholder="物品"
@@ -111,7 +113,12 @@ export function JsonBuilder({ kind, value, onChange }: Props) {
                     className="h-8 flex-1 text-xs"
                     value={String(row[col] ?? "")}
                     placeholder={col}
-                    onChange={(e) => updateRow(i, col, e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const asNum = Number(raw)
+                      const isNumCol = col === "count" || col === "probability" || col === "quantity" || col === "value"
+                      updateRow(i, col, raw !== "" && isNumCol && Number.isFinite(asNum) ? asNum : raw)
+                    }}
                   />
                 ),
               )}

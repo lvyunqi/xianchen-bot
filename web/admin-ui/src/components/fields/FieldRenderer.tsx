@@ -39,7 +39,6 @@ export function FieldRenderer({ field, value, onChange, invalid }: Props) {
   )
 
   switch (field.type) {
-    case "image":
     case "number":
       return wrap(
         <Input
@@ -66,19 +65,24 @@ export function FieldRenderer({ field, value, onChange, invalid }: Props) {
           <Switch checked={Boolean(value)} onCheckedChange={(v) => onChange(v)} />
         </div>,
       )
-    case "select":
+    case "select": {
+      const NONE = "__none__"
       return wrap(
-        <Select value={value ? String(value) : ""} onValueChange={(v) => onChange(v)}>
+        <Select
+          value={value === "" || value === null || value === undefined ? NONE : String(value)}
+          onValueChange={(v) => onChange(v === NONE ? "" : v)}
+        >
           <SelectTrigger id={id}>
             <SelectValue placeholder="选择…" />
           </SelectTrigger>
           <SelectContent>
             {(field.options ?? []).map((opt) => (
-              <SelectItem key={opt} value={opt}>{opt || "（空）"}</SelectItem>
+              <SelectItem key={opt || NONE} value={opt === "" ? NONE : opt}>{opt || "（空）"}</SelectItem>
             ))}
           </SelectContent>
         </Select>,
       )
+    }
     case "datetime":
       return wrap(
         <Input
