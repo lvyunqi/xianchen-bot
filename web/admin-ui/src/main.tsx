@@ -23,7 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
           <ThemedToaster />
           <AuthGate>
             <App />

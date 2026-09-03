@@ -104,7 +104,7 @@ func NewAdminMux(store *storage.Store, static fs.FS, uploadDir string) http.Hand
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)
 	})
-	return monitorMiddleware(recoveryMiddleware(corsMiddleware(authMiddleware(mux))))
+	return monitorMiddleware(recoveryMiddleware(compressionMiddleware(corsMiddleware(authMiddleware(mux)))))
 }
 
 func (a *AdminAPI) handleAPI(w http.ResponseWriter, r *http.Request) {

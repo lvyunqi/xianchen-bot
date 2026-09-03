@@ -17,7 +17,8 @@ function applyTheme(theme: Theme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved === "dark" ? "dark" : "light"
+    if (saved === "dark" || saved === "light") return saved
+    return "dark"
   })
 
   useEffect(() => {
