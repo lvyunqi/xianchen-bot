@@ -130,7 +130,7 @@ func (g *Game) finishDungeonBattle(player *model.Player, state mapMonsterBattleS
 	_ = g.clearMapMonsterBattle(player.ID)
 	_, _ = g.addPlayerValueInt(player.ID, "stats.battles", 1)
 	remainingHP := max64(state.PlayerHP, 1)
-	_ = g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Updates(map[string]any{"health": remainingHP, "mana": max64(state.PlayerMana, 0)}).Error
+	_ = g.players.UpdateColumns(player.ID, map[string]any{"health": remainingHP, "mana": max64(state.PlayerMana, 0)})
 	duration := max64(time.Now().UnixMilli()-state.StartedAt, 1000)
 	mode := "单人闯境"
 	if state.Team {
