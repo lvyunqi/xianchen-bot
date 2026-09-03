@@ -66,7 +66,7 @@ func startAdminServer(store *storage.Store, dataDir, adminHost string) (string, 
 		IdleTimeout:       90 * time.Second,
 	}
 	adminServerState.server = server
-	adminServerState.url = "http://" + address + "/admin"
+	adminServerState.url = "http://" + address + "/admin/"
 	go func() {
 		serveErr := server.Serve(listener)
 		adminServerState.Lock()

@@ -96,10 +96,13 @@ func NewAdminMux(store *storage.Store, static fs.FS, uploadDir string) http.Hand
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", api.handleAPI)
 	mux.HandleFunc("/uploads/", api.serveUpload)
-	mux.HandleFunc("/admin", api.serveAdmin)
+	mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+		// 无尾斜杠入口规范化：相对资源路径才能落在 /admin/ 前缀下。
+		http.Redirect(w, r, "/admin/", http.StatusMovedPermanently)
+	})
 	mux.HandleFunc("/admin/", api.serveAdmin)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin", http.StatusFound)
+		http.Redirect(w, r, "/admin/", http.StatusFound)
 	})
 	return monitorMiddleware(recoveryMiddleware(corsMiddleware(mux)))
 }
@@ -747,7 +750,10 @@ func (a *AdminAPI) serveAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := fs.ReadFile(a.static, path)
 	if err != nil {
-		data, err = fs.ReadFile(a.static, "index.html")
+		// SPA 回落：任何未命中路径都回 index.html，此时必须按 HTML 声明 MIME，
+		// 否则 module 脚本请求会拿到 text/html 内容却带 .js 的 Content-Type。
+		path = "index.html"
+		data, err = fs.ReadFile(a.static, path)
 	}
 	if err != nil {
 		http.Error(w, "管理界面未嵌入", http.StatusInternalServerError)
