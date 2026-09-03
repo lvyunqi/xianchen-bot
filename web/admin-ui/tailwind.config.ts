@@ -8,7 +8,13 @@ export default {
     container: { center: true, padding: "1.5rem" },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "PingFang SC", "Microsoft YaHei", "sans-serif"],
+        sans: ["Outfit Variable", "system-ui", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "sans-serif"],
+        mono: ["JetBrains Mono Variable", "ui-monospace", "SFMono-Regular", "Consolas", "monospace"],
+      },
+      boxShadow: {
+        // 色相跟随背景的柔和阴影，替代通用黑影
+        card: "0 1px 2px hsl(var(--shadow-color) / 0.04), 0 2px 8px hsl(var(--shadow-color) / 0.06)",
+        lift: "0 2px 4px hsl(var(--shadow-color) / 0.05), 0 8px 24px hsl(var(--shadow-color) / 0.10)",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -39,6 +45,7 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        shimmer: "shimmer 1.6s infinite",
       },
     },
   },

@@ -131,16 +131,17 @@ export default function DatabaseOps() {
 function StatCard({ title, value, index }: { title: string; value: string; index: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05, ease: "easeOut" }}
+      transition={{ type: "spring", stiffness: 300, damping: 26, delay: Math.min(index * 0.04, 0.3) }}
     >
-      <Card className="transition-shadow hover:shadow-md">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">{value}</div>
+      <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent opacity-60 transition-opacity duration-200 group-hover:opacity-100" />
+        <CardContent className="p-5">
+          <div className="text-[13px] font-medium text-muted-foreground">{title}</div>
+          <div className="tnum mt-2 truncate font-mono text-[22px] font-semibold leading-none tracking-tight text-foreground">
+            {value}
+          </div>
         </CardContent>
       </Card>
     </motion.div>

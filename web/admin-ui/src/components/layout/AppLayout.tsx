@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { Database, Menu, Moon, RefreshCw, Sun, X } from "lucide-react"
+import { Database, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
 import { useTheme } from "@/lib/theme"
@@ -10,13 +10,21 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+function navLinkClass(isActive: boolean, compact?: boolean) {
+  return cn(
+    "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent/70 hover:text-accent-foreground active:scale-[0.98]",
+    isActive ? "text-accent-foreground" : "",
+    compact && "justify-center px-0",
+  )
+}
+
 function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
   return (
-    <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3 scrollbar-thin">
+    <nav className="relative z-10 flex-1 space-y-4 overflow-y-auto px-2 py-3 scrollbar-thin">
       {resourcesByGroup().map(([group, items]) => (
         <div key={group}>
           {!compact && (
-            <div className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-3 pb-1.5 pt-2 text-[11px] font-medium tracking-widest text-muted-foreground/80">
               {group}
             </div>
           )}
@@ -27,21 +35,33 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
                   <NavLink
                     to={r.key === "dashboard" ? "/" : `/r/${r.key}`}
                     onClick={onNavigate}
-                    className={({ isActive }) =>
-                      cn(
-                        "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive && "bg-accent text-accent-foreground font-medium",
-                        compact && "justify-center px-0",
-                      )
-                    }
+                    className={({ isActive }) => navLinkClass(isActive, compact)}
                   >
-                    <r.icon className="h-4 w-4 shrink-0" />
-                    {!compact && <span className="truncate">{r.title}</span>}
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.span
+                            layoutId="nav-active"
+                            className="absolute inset-0 rounded-lg bg-accent"
+                            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                          />
+                        )}
+                        <r.icon
+                          className={cn(
+                            "relative z-10 h-4 w-4 shrink-0 transition-colors",
+                            isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                          )}
+                        />
+                        {!compact && (
+                          <span className={cn("relative z-10 truncate", isActive && "font-medium text-foreground")}>
+                            {r.title}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </NavLink>
                 </TooltipTrigger>
-                {compact && (
-                  <TooltipContent side="right">{r.title}</TooltipContent>
-                )}
+                {compact && <TooltipContent side="right">{r.title}</TooltipContent>}
               </Tooltip>
             ))}
           </div>
@@ -49,23 +69,37 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
       ))}
       <div>
         {!compact && (
-          <div className="px-3 pb-1.5 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="px-3 pb-1.5 pt-2 text-[11px] font-medium tracking-widest text-muted-foreground/80">
             系统工具
           </div>
         )}
         <NavLink
           to="/database"
           onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-              isActive && "bg-accent text-accent-foreground font-medium",
-              compact && "justify-center px-0",
-            )
-          }
+          className={({ isActive }) => navLinkClass(isActive, compact)}
         >
-          <Database className="h-4 w-4 shrink-0" />
-          {!compact && <span>数据运维</span>}
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="nav-active"
+                  className="absolute inset-0 rounded-lg bg-accent"
+                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
+              <Database
+                className={cn(
+                  "relative z-10 h-4 w-4 shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                )}
+              />
+              {!compact && (
+                <span className={cn("relative z-10 truncate", isActive && "font-medium text-foreground")}>
+                  数据运维
+                </span>
+              )}
+            </>
+          )}
         </NavLink>
       </div>
     </nav>
@@ -74,12 +108,12 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
 
 function Brand({ compact }: { compact?: boolean }) {
   return (
-    <div className={cn("flex h-14 items-center gap-2.5 border-b px-4", compact && "justify-center px-0")}>
-      <img src="/assets/logo.png" alt="仙尘" className="h-7 w-7 rounded-lg" />
+    <div className={cn("relative z-10 flex h-14 items-center gap-2.5 border-b border-border/60 px-4", compact && "justify-center px-0")}>
+      <img src="/admin/assets/logo.png" alt="仙尘" className="h-7 w-7 rounded-lg shadow-card" />
       {!compact && (
         <div className="leading-tight">
           <div className="text-sm font-semibold">仙尘管理后台</div>
-          <div className="text-[11px] text-muted-foreground">QimenBot 动态插件</div>
+          <div className="text-gilded text-[11px] font-medium">修仙界 · 运营台</div>
         </div>
       )}
     </div>
@@ -96,31 +130,33 @@ export default function AppLayout() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-dvh">
         {/* 桌面侧栏 */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-30 hidden flex-col border-r bg-card transition-[width] duration-300 ease-in-out md:flex",
+            "surface-grain fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border/60 bg-card transition-[width] duration-300 ease-in-out md:flex",
             collapsed ? "w-14" : "w-60",
           )}
         >
           <Brand compact={collapsed} />
           <NavList compact={collapsed} />
-          <div className="border-t p-2">
+          <div className="relative z-10 border-t border-border/60 p-2">
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-center"
+              className="w-full justify-center text-muted-foreground"
               onClick={() => setCollapsed((c) => !c)}
+              title={collapsed ? "展开侧栏" : "收起侧栏"}
             >
-              {collapsed ? "»" : "« 收起"}
+              {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              {!collapsed && <span className="text-xs">收起</span>}
             </Button>
           </div>
         </aside>
 
         {/* 主区域 */}
         <div className={cn("flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out", collapsed ? "md:pl-14" : "md:pl-60")}>
-          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/60 bg-background/75 px-4 backdrop-blur-md">
             <div className="md:hidden">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
@@ -151,10 +187,10 @@ export default function AppLayout() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                 className="mx-auto w-full max-w-7xl"
               >
                 <Outlet />
