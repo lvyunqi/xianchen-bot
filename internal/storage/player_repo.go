@@ -76,6 +76,27 @@ func (r *PlayerRepository) AdjustItem(playerID, itemID uint, delta int64) error 
 		return tx.Save(&row).Error
 	})
 }
+// CountStrongerThan 战力排行榜前方人数（用于"登顶"判定）：同战力按创建先后排序。
+func (r *PlayerRepository) CountStrongerThan(player model.Player) (int64, error) {
+	var stronger int64
+	err := r.db.Model(&model.Player{}).
+		Where("deleted_at IS NULL AND banned = ? AND (combat_power > ? OR (combat_power = ? AND id < ?))",
+			false, player.CombatPower, player.CombatPower, player.ID).
+		Count(&stronger).Error
+	return stronger, err
+}
+
+// CountByDaoName 道号占用查重；excludeID>0 时排除自己（改名场景）。
+func (r *PlayerRepository) CountByDaoName(daoName string, excludeID uint) (int64, error) {
+	var existing int64
+	query := r.db.Model(&model.Player{}).Where("dao_name = ?", daoName)
+	if excludeID > 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+	err := query.Count(&existing).Error
+	return existing, err
+}
+
 func (r *PlayerRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var player model.Player

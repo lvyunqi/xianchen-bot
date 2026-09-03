@@ -100,6 +100,7 @@ func (r GameResult) Text() string {
 type Game struct {
 	store     *storage.Store
 	players   *storage.PlayerRepository
+	counters  PlayerCounters
 	social    *storage.SocialRepository
 	logs      *storage.LogRepository
 	startedAt time.Time
@@ -109,7 +110,8 @@ func NewGame(store *storage.Store) (*Game, error) {
 	if err := SeedPlayerCommandMenus(store); err != nil {
 		return nil, err
 	}
-	game := &Game{store: store, players: storage.NewPlayerRepository(store.DB), social: storage.NewSocialRepository(store.DB), logs: storage.NewLogRepository(store.DB), startedAt: time.Now()}
+	players := storage.NewPlayerRepository(store.DB)
+	game := &Game{store: store, players: players, counters: players, social: storage.NewSocialRepository(store.DB), logs: storage.NewLogRepository(store.DB), startedAt: time.Now()}
 	if err := game.repairMigratedArtifactSlots(); err != nil {
 		return nil, err
 	}
@@ -251,8 +253,7 @@ func (g *Game) isCombatPowerChampion(playerID uint) bool {
 	if g.store.DB.Select("id", "combat_power").First(&player, playerID).Error != nil {
 		return false
 	}
-	var stronger int64
-	_ = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL AND banned = ? AND (combat_power > ? OR (combat_power = ? AND id < ?))", false, player.CombatPower, player.CombatPower, player.ID).Count(&stronger).Error
+	stronger, _ := g.counters.CountStrongerThan(player)
 	return stronger == 0
 }
 
@@ -283,8 +284,8 @@ func (g *Game) register(groupID, accountID string, command handler.ParsedCommand
 	} else if matched {
 		return GameResult{Title: "道号审核未通过", Content: "该道号触发仙盟禁用词，请更换合规道号后重新入道。", Actions: []string{"帮助"}}, true, nil
 	}
-	var existingNames int64
-	if err := g.store.DB.Model(&model.Player{}).Where("dao_name = ?", daoName).Count(&existingNames).Error; err != nil {
+	existingNames, err := g.counters.CountByDaoName(daoName, 0)
+	if err != nil {
 		return GameResult{}, true, err
 	} else if existingNames > 0 {
 		return GameResult{Title: "道号已被占用", Content: "“" + daoName + "”已经记入他人道籍，请更换一个全服唯一道号。"}, true, nil
@@ -1231,8 +1232,8 @@ func (g *Game) rename(player *model.Player, command handler.ParsedCommand) (Game
 	} else if matched {
 		return GameResult{Title: "道号审核未通过", Content: "新道号触发仙盟禁用词，修为未扣除。", Actions: []string{"改名"}}, true, nil
 	}
-	var existing int64
-	if err := g.store.DB.Model(&model.Player{}).Where("dao_name = ? AND id <> ?", name, player.ID).Count(&existing).Error; err != nil {
+	existing, err := g.counters.CountByDaoName(name, player.ID)
+	if err != nil {
 		return GameResult{}, true, err
 	} else if existing > 0 {
 		return GameResult{Title: "道号已被占用", Content: "道号必须全服唯一，修为未扣除。"}, true, nil
@@ -1484,7 +1485,7 @@ func (g *Game) syncPlayerCombatPower(player *model.Player) error {
 	if calculated == player.CombatPower {
 		return nil
 	}
-	if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("combat_power", calculated).Error; err != nil {
+	if err := g.players.Update(player.ID, map[string]any{"combat_power": calculated}); err != nil {
 		return err
 	}
 	player.CombatPower = calculated
