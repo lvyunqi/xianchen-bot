@@ -256,9 +256,9 @@ func (g *Game) runGMCommand(actor string, actorLevel int, command GMCommand) (Ga
 			return GameResult{}, "all_players", err
 		}
 		if command.Name == "天降灵石" {
-			err = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("spirit_stones", gorm.Expr("spirit_stones + ?", amount)).Error
+			err = g.players.GrantAllSpiritStones(amount)
 		} else {
-			err = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("immortal_jade", gorm.Expr("immortal_jade + ?", amount)).Error
+			err = g.players.GrantAllImmortalJade(amount)
 		}
 		if err != nil {
 			return GameResult{}, "all_players", err
@@ -343,10 +343,10 @@ func (g *Game) runGMCommand(actor string, actorLevel int, command GMCommand) (Ga
 
 	case "净灵玉", "净灵石":
 		if command.Name == "净灵石" {
-			if err := g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("spirit_stones", 0).Error; err != nil {
+			if err := g.players.ClearAllSpiritStones(); err != nil {
 				return GameResult{}, "all_players", err
 			}
-		} else if err := g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("immortal_jade", 0).Error; err != nil {
+		} else if err := g.players.ClearAllImmortalJade(); err != nil {
 			return GameResult{}, "all_players", err
 		}
 		return GameResult{Title: command.Name, Content: "神令已清空全服对应货币。"}, "all_players", nil
@@ -356,7 +356,7 @@ func (g *Game) runGMCommand(actor string, actorLevel int, command GMCommand) (Ga
 		content := "灵域已重置，各宗门可重新争夺领地。"
 		if command.Name == "仙缘令" {
 			key, content = "world.encounter_trigger", "仙缘令已触发，全服修士的仙缘奇遇进入活跃期。"
-			_ = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("immortal_affinity", gorm.Expr("immortal_affinity + 5")).Error
+			_ = g.players.BoostAllImmortalAffinity(5)
 		}
 		if err := g.setSystemSetting(key, time.Now().Format(time.RFC3339), content); err != nil {
 			return GameResult{}, "world", err
@@ -471,9 +471,9 @@ func (g *Game) runGMCommand(actor string, actorLevel int, command GMCommand) (Ga
 			if amount > 100 {
 				amount = 100
 			}
-			err = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("cultivation", gorm.Expr("cultivation * ? / 100", 100-amount)).Error
+			err = g.players.ReduceAllCultivationPercent(amount)
 		} else {
-			err = g.store.DB.Model(&model.Player{}).Where("deleted_at IS NULL").Update("cultivation", gorm.Expr("CASE WHEN cultivation > ? THEN cultivation - ? ELSE 0 END", amount, amount)).Error
+			err = g.players.ReduceAllCultivationFixed(amount)
 		}
 		return GameResult{Title: "天罚全服", Content: fmt.Sprintf("全服修为已按%s扣除%d。", args[0], amount)}, "all_players", err
 

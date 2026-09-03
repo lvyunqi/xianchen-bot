@@ -175,3 +175,43 @@ func (r *PlayerRepository) Delete(id uint) error {
 		return tx.Unscoped().Delete(&player).Error
 	})
 }
+
+// adjustAll 全服批量更新（GM 神令），统一排除软删玩家；column 由白名单调用方传入。
+func (r *PlayerRepository) adjustAll(column string, value any) error {
+	return r.db.Model(&model.Player{}).Where("deleted_at IS NULL").Update(column, value).Error
+}
+
+// GrantAllSpiritStones 全服发放灵石（GM"天降灵石"）。
+func (r *PlayerRepository) GrantAllSpiritStones(delta int64) error {
+	return r.adjustAll("spirit_stones", gorm.Expr("spirit_stones + ?", delta))
+}
+
+// ReduceAllCultivationPercent 按百分比削减全服修为（GM"天罚"，percent 为削减量，如 20 表示 -20%）。
+func (r *PlayerRepository) ReduceAllCultivationPercent(percent int64) error {
+	return r.adjustAll("cultivation", gorm.Expr("cultivation * ? / 100", 100-percent))
+}
+
+// ClearAllSpiritStones 清空全服灵石。
+func (r *PlayerRepository) ClearAllSpiritStones() error {
+	return r.adjustAll("spirit_stones", 0)
+}
+
+// ClearAllImmortalJade 清空全服仙金。
+func (r *PlayerRepository) ClearAllImmortalJade() error {
+	return r.adjustAll("immortal_jade", 0)
+}
+
+// BoostAllImmortalAffinity 全服仙缘加成（GM"仙缘令"）。
+func (r *PlayerRepository) BoostAllImmortalAffinity(delta int64) error {
+	return r.adjustAll("immortal_affinity", gorm.Expr("immortal_affinity + ?", delta))
+}
+
+// GrantAllImmortalJade 全服发放仙金。
+func (r *PlayerRepository) GrantAllImmortalJade(delta int64) error {
+	return r.adjustAll("immortal_jade", gorm.Expr("immortal_jade + ?", delta))
+}
+
+// ReduceAllCultivationFixed 全服扣除固定修为（不低于 0）。
+func (r *PlayerRepository) ReduceAllCultivationFixed(amount int64) error {
+	return r.adjustAll("cultivation", gorm.Expr("CASE WHEN cultivation > ? THEN cultivation - ? ELSE 0 END", amount, amount))
+}
