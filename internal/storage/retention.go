@@ -31,7 +31,7 @@ var retentionPolicies = []RetentionPolicy{
 	{Table: "slow_query_logs", KeepDays: 14},
 	{Table: "dungeon_runs", KeepDays: 7},
 	{Table: "admin_menu_logs", KeepDays: 90},
-	{Table: "arena_records", KeepDays: 90},
+	{Table: "arena_records", KeepDays: 90, TimeColumn: "updated_at"},
 	{Table: "bank_transactions", KeepDays: 180},
 	{Table: "trade_records", KeepDays: 365},
 	{Table: "content_reviews", KeepDays: 180},

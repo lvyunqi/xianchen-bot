@@ -6,60 +6,65 @@
 @tailwind utilities;
 
 /*
- * 主题：青玉 × 鎏金（修仙运营台）
- * 中性灰统一走 190 色相（微青），主色青玉、强调鎏金，光暗两套保持同族。
- * --shadow-color 跟随主题色相，阴影不再是通用黑。
+ * 主题：玄青玻璃 × 鎏金（修仙运营台 · Glassmorphism）
+ * 设计系统见 design-system/xianchen-admin/MASTER.md（ui-ux-pro-max 生成）。
+ * 深色默认：玄青近黑底 + 双色极光光晕；玻璃层组件用 .glass / .glass-strong。
+ * 密度档：dashboard（8/10）——组件间距紧凑，信息密度优先。
  */
 @layer base {
   :root {
-    --background: 42 30% 97%;
-    --foreground: 190 18% 14%;
-    --card: 40 25% 99%;
-    --card-foreground: 190 18% 14%;
-    --popover: 40 25% 99%;
-    --popover-foreground: 190 18% 14%;
-    --primary: 168 58% 28%;
-    --primary-foreground: 42 40% 98%;
-    --secondary: 42 16% 92%;
-    --secondary-foreground: 190 12% 20%;
-    --muted: 42 16% 94%;
-    --muted-foreground: 190 8% 42%;
-    --accent: 168 32% 91%;
-    --accent-foreground: 168 55% 20%;
-    --destructive: 8 65% 46%;
+    --background: 170 22% 95%;
+    --foreground: 172 22% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 172 22% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 172 22% 12%;
+    --primary: 168 68% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 168 16% 90%;
+    --secondary-foreground: 172 18% 18%;
+    --muted: 170 14% 91%;
+    --muted-foreground: 172 8% 40%;
+    --accent: 168 30% 88%;
+    --accent-foreground: 168 60% 20%;
+    --destructive: 8 70% 48%;
     --destructive-foreground: 0 0% 100%;
-    --border: 42 14% 87%;
-    --input: 42 14% 84%;
-    --ring: 168 58% 28%;
-    --gold: 38 78% 40%;
-    --gold-foreground: 42 40% 98%;
-    --shadow-color: 168 40% 20%;
-    --radius: 0.75rem;
+    --border: 170 14% 84%;
+    --input: 170 14% 80%;
+    --ring: 168 68% 30%;
+    --gold: 38 74% 38%;
+    --gold-foreground: 42 45% 98%;
+    --shadow-color: 168 45% 18%;
+    --glass-bg: 0 0% 100% / 68%;
+    --glass-border: 170 20% 70% / 45%;
+    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 190 18% 6%;
-    --foreground: 42 20% 90%;
-    --card: 190 15% 9%;
-    --card-foreground: 42 20% 90%;
-    --popover: 190 15% 8%;
-    --popover-foreground: 42 20% 90%;
-    --primary: 168 62% 52%;
-    --primary-foreground: 190 30% 8%;
-    --secondary: 190 12% 14%;
-    --secondary-foreground: 42 12% 80%;
-    --muted: 190 12% 13%;
-    --muted-foreground: 190 8% 60%;
-    --accent: 168 30% 15%;
-    --accent-foreground: 168 45% 78%;
-    --destructive: 8 70% 58%;
+    --background: 168 28% 4.5%;
+    --foreground: 42 22% 90%;
+    --card: 170 20% 8%;
+    --card-foreground: 42 22% 90%;
+    --popover: 170 20% 7%;
+    --popover-foreground: 42 22% 90%;
+    --primary: 166 72% 52%;
+    --primary-foreground: 172 45% 6%;
+    --secondary: 170 14% 13%;
+    --secondary-foreground: 42 12% 78%;
+    --muted: 170 14% 12%;
+    --muted-foreground: 170 8% 58%;
+    --accent: 168 28% 14%;
+    --accent-foreground: 166 55% 78%;
+    --destructive: 8 72% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 190 12% 17%;
-    --input: 190 12% 20%;
-    --ring: 168 62% 52%;
-    --gold: 40 82% 58%;
-    --gold-foreground: 40 80% 10%;
-    --shadow-color: 190 40% 2%;
+    --border: 168 14% 16%;
+    --input: 168 14% 19%;
+    --ring: 42 70% 60%;
+    --gold: 40 78% 62%;
+    --gold-foreground: 40 80% 8%;
+    --shadow-color: 168 55% 1.5%;
+    --glass-bg: 170 20% 9% / 62%;
+    --glass-border: 168 25% 40% / 22%;
   }
 
   * {
@@ -73,33 +78,79 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    min-height: 100dvh;
   }
 
   ::selection {
     @apply bg-gold/30;
   }
 
-  /* 键盘焦点环：可访问性硬要求，统一由主题给出 */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-ring/80 ring-offset-2 ring-offset-background;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
-  /* 玉质感：细噪点打破纯平，深浅两套强度 */
-  .surface-grain {
-    position: relative;
-  }
-  .surface-grain::before {
-    content: "";
-    position: absolute;
+  /*
+   * 极光底色：青玉主光 + 鎏金辅光，两团 radial 缓慢呼吸。
+   * 固定定位跟随视口，内容层不承受混合成本。
+   */
+  .bg-aurora {
+    position: fixed;
     inset: 0;
+    z-index: -1;
     pointer-events: none;
-    opacity: 0.5;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background:
+      radial-gradient(52rem 32rem at 12% -8%, hsl(166 70% 30% / 0.26), transparent 62%),
+      radial-gradient(44rem 30rem at 105% 112%, hsl(40 70% 55% / 0.16), transparent 60%),
+      radial-gradient(60rem 44rem at 85% 8%, hsl(168 45% 25% / 0.16), transparent 65%);
   }
-  .dark .surface-grain::before {
-    opacity: 0.9;
+  :root:not(.dark) .bg-aurora {
+    background:
+      radial-gradient(52rem 32rem at 12% -8%, hsl(168 60% 42% / 0.10), transparent 62%),
+      radial-gradient(44rem 30rem at 105% 112%, hsl(40 75% 50% / 0.08), transparent 60%);
+  }
+
+  /* 玻璃层：卡片。半透明 + 背景模糊 + 内侧高光描边 */
+  .glass {
+    background: hsl(var(--glass-bg));
+    -webkit-backdrop-filter: blur(18px) saturate(1.35);
+    backdrop-filter: blur(18px) saturate(1.35);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.05) inset,
+      0 16px 40px -18px hsl(var(--shadow-color) / 0.55);
+  }
+  :root:not(.dark) .glass {
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.7) inset,
+      0 16px 40px -20px hsl(var(--shadow-color) / 0.28);
+  }
+
+  /* 玻璃层：侧栏 / 头栏等承重面板，更实、模糊更强 */
+  .glass-strong {
+    background: hsl(var(--glass-bg));
+    -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    backdrop-filter: blur(26px) saturate(1.5);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.06) inset,
+      0 24px 60px -24px hsl(var(--shadow-color) / 0.65);
+  }
+  :root:not(.dark) .glass-strong {
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.8) inset,
+      0 24px 60px -26px hsl(var(--shadow-color) / 0.30);
   }
 
   /* 鎏金渐变文字：品牌名与页面大标题用 */
@@ -107,12 +158,23 @@
     background: linear-gradient(
       100deg,
       hsl(var(--gold)) 0%,
-      hsl(var(--gold) / 0.75) 45%,
+      hsl(var(--gold) / 0.72) 45%,
       hsl(var(--gold)) 100%
     );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+
+  /* 玻璃卡悬浮：可点击卡片统一 200ms 上浮，不做位移抖动 */
+  .glass-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .glass-hover:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.06) inset,
+      0 24px 52px -20px hsl(var(--shadow-color) / 0.7);
   }
 }
 

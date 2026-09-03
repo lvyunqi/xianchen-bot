@@ -87,6 +87,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (phase === "checking") {
     return (
       <div className="flex min-h-dvh items-center justify-center">
+        <div className="bg-aurora" aria-hidden />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           正在验证会话…
@@ -97,12 +98,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (phase === "login") {
     return (
-      <div className="surface-grain flex min-h-dvh items-center justify-center p-6">
-        <Card className="relative z-10 w-full max-w-sm overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+      <div className="flex min-h-dvh items-center justify-center p-6">
+        <div className="bg-aurora" aria-hidden />
+        <Card className="glass relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border-transparent">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
           <CardContent className="p-8">
             <div className="mb-6 flex flex-col items-center gap-3 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gold/30 bg-gold/10 text-gold">
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>

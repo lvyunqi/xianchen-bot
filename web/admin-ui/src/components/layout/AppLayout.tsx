@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Command as CommandIcon, Database, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
@@ -15,23 +15,23 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 function navLinkClass(isActive: boolean, compact?: boolean) {
   return cn(
-    "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent/70 hover:text-accent-foreground active:scale-[0.98]",
-    isActive ? "text-accent-foreground" : "",
+    "group relative flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] leading-5 text-muted-foreground transition-colors duration-200 hover:bg-white/5 hover:text-foreground",
+    isActive ? "text-foreground" : "",
     compact && "justify-center px-0",
   )
 }
 
 function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
   return (
-    <nav className="relative z-10 flex-1 space-y-4 overflow-y-auto px-2 py-3 scrollbar-thin">
+    <nav className="scrollbar-thin relative z-10 flex-1 space-y-3.5 overflow-y-auto px-2 py-2.5">
       {resourcesByGroup().map(([group, items]) => (
         <div key={group}>
           {!compact && (
-            <div className="px-3 pb-1.5 pt-2 text-[11px] font-medium tracking-widest text-muted-foreground/80">
+            <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
               {group}
             </div>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-px">
             {items.map((r) => (
               <Tooltip key={r.key} delayDuration={200}>
                 <TooltipTrigger asChild>
@@ -45,20 +45,25 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
                         {isActive && (
                           <motion.span
                             layoutId="nav-active"
-                            className="absolute inset-0 rounded-lg bg-accent"
-                            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                            className="absolute inset-0 rounded-lg border border-gold/40 bg-primary/20"
+                            transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                          />
+                        )}
+                        {isActive && !compact && (
+                          <motion.span
+                            layoutId="nav-marker"
+                            className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-gold"
+                            transition={{ type: "spring", stiffness: 420, damping: 36 }}
                           />
                         )}
                         <r.icon
                           className={cn(
-                            "relative z-10 h-4 w-4 shrink-0 transition-colors",
-                            isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                            "relative z-10 h-4 w-4 shrink-0 transition-colors duration-200",
+                            isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
                           )}
                         />
                         {!compact && (
-                          <span className={cn("relative z-10 truncate", isActive && "font-medium text-foreground")}>
-                            {r.title}
-                          </span>
+                          <span className={cn("relative z-10 truncate", isActive && "font-medium")}>{r.title}</span>
                         )}
                       </>
                     )}
@@ -72,7 +77,7 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
       ))}
       <div>
         {!compact && (
-          <div className="px-3 pb-1.5 pt-2 text-[11px] font-medium tracking-widest text-muted-foreground/80">
+          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
             系统工具
           </div>
         )}
@@ -86,20 +91,25 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
               {isActive && (
                 <motion.span
                   layoutId="nav-active"
-                  className="absolute inset-0 rounded-lg bg-accent"
-                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  className="absolute inset-0 rounded-lg border border-gold/40 bg-primary/20"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                />
+              )}
+              {isActive && !compact && (
+                <motion.span
+                  layoutId="nav-marker"
+                  className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-gold"
+                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
                 />
               )}
               <Database
                 className={cn(
-                  "relative z-10 h-4 w-4 shrink-0 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground",
+                  "relative z-10 h-4 w-4 shrink-0 transition-colors duration-200",
+                  isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
                 )}
               />
               {!compact && (
-                <span className={cn("relative z-10 truncate", isActive && "font-medium text-foreground")}>
-                  数据运维
-                </span>
+                <span className={cn("relative z-10 truncate", isActive && "font-medium")}>数据运维</span>
               )}
             </>
           )}
@@ -111,12 +121,17 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
 
 function Brand({ compact }: { compact?: boolean }) {
   return (
-    <div className={cn("relative z-10 flex h-14 items-center gap-2.5 border-b border-border/60 px-4", compact && "justify-center px-0")}>
-      <img src="/admin/assets/logo.png" alt="仙尘" className="h-7 w-7 rounded-lg shadow-card" />
+    <div
+      className={cn(
+        "relative z-10 flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-3.5",
+        compact && "justify-center px-0",
+      )}
+    >
+      <img src="/admin/assets/logo.png" alt="仙尘" className="h-8 w-8 rounded-xl shadow-card" />
       {!compact && (
-        <div className="leading-tight">
-          <div className="text-sm font-semibold">仙尘管理后台</div>
-          <div className="text-gilded text-[11px] font-medium">修仙界 · 运营台</div>
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-[13px] font-semibold tracking-wide">仙尘管理后台</div>
+          <div className="text-gilded truncate text-[10px] font-medium tracking-[0.18em]">修仙界 · 运营台</div>
         </div>
       )}
     </div>
@@ -129,6 +144,7 @@ export default function AppLayout() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const location = useLocation()
+  const reduceMotion = useReducedMotion()
   const queryClient = useQueryClient()
   const current = RESOURCE_MAP.get(location.pathname.replace(/^\/r\//, "").replace(/^\//, "") || "dashboard")
   const refreshAll = () => queryClient.invalidateQueries()
@@ -142,17 +158,18 @@ export default function AppLayout() {
         onToggleTheme={toggle}
         theme={theme}
       />
+      <div className="bg-aurora" aria-hidden />
       <div className="flex min-h-dvh">
-        {/* 桌面侧栏 */}
+        {/* 桌面侧栏：悬浮玻璃面板 */}
         <aside
           className={cn(
-            "surface-grain fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border/60 bg-card transition-[width] duration-300 ease-in-out md:flex",
-            collapsed ? "w-14" : "w-60",
+            "glass-strong fixed inset-y-3 left-3 z-30 hidden flex-col rounded-2xl transition-[width] duration-300 ease-in-out md:flex",
+            collapsed ? "w-14" : "w-56",
           )}
         >
           <Brand compact={collapsed} />
           <NavList compact={collapsed} />
-          <div className="relative z-10 border-t border-border/60 p-2">
+          <div className="relative z-10 border-t border-border/40 p-2">
             <Button
               variant="ghost"
               size="sm"
@@ -167,8 +184,13 @@ export default function AppLayout() {
         </aside>
 
         {/* 主区域 */}
-        <div className={cn("flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out", collapsed ? "md:pl-14" : "md:pl-60")}>
-          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border/60 bg-background/75 px-4 backdrop-blur-md">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out",
+            collapsed ? "md:pl-[4.75rem]" : "md:pl-60",
+          )}
+        >
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-1.5 border-b border-border/40 bg-background/55 px-4 backdrop-blur-xl">
             <div className="md:hidden">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
@@ -190,22 +212,23 @@ export default function AppLayout() {
             <Button
               variant="outline"
               size="sm"
-              className="hidden gap-2 text-muted-foreground sm:flex"
+              className="glass hidden cursor-pointer gap-2 border-border/40 text-muted-foreground hover:text-foreground sm:flex"
               onClick={() => setPaletteOpen(true)}
             >
               <CommandIcon className="h-3.5 w-3.5" />
               <span className="text-xs">搜索</span>
               <Kbd>Ctrl K</Kbd>
             </Button>
-            <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => setPaletteOpen(true)} title="搜索">
+            <Button variant="ghost" size="icon" className="cursor-pointer sm:hidden" onClick={() => setPaletteOpen(true)} title="搜索">
               <CommandIcon className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => queryClient.invalidateQueries()} title="刷新全部数据">
+            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => queryClient.invalidateQueries()} title="刷新全部数据">
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              className="cursor-pointer"
               title="退出登录"
               onClick={() => {
                 clearStoredToken()
@@ -214,20 +237,20 @@ export default function AppLayout() {
             >
               <LogOut className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={toggle} title="切换主题">
+            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={toggle} title="切换主题">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </header>
 
-          <main className="flex-1 p-4 md:p-6">
+          <main className="flex-1 p-4 md:px-6 md:py-5">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 10 }}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                className="mx-auto w-full max-w-7xl"
+                exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="mx-auto w-full max-w-[1400px]"
               >
                 <Outlet />
               </motion.div>

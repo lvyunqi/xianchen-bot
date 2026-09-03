@@ -15,6 +15,7 @@ export default {
         // 色相跟随背景的柔和阴影，替代通用黑影
         card: "0 1px 2px hsl(var(--shadow-color) / 0.04), 0 2px 8px hsl(var(--shadow-color) / 0.06)",
         lift: "0 2px 4px hsl(var(--shadow-color) / 0.05), 0 8px 24px hsl(var(--shadow-color) / 0.10)",
+        glass: "0 16px 40px -18px hsl(var(--shadow-color) / 0.55)",
       },
       colors: {
         border: "hsl(var(--border))",

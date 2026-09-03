@@ -36,3 +36,11 @@ node_modules/
 
 # Rust build cache
 plugin/target/
+
+# local preview
+config.preview.yaml
+.preview-data/
+
+cmd/previewseed/
+.preview-dark.png
+.preview-light.png

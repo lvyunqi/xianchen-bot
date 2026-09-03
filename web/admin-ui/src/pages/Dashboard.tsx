@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { motion } from "framer-motion"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts"
-import { CloudOff, RefreshCw, ScrollText, Sparkles, TrendingUp } from "lucide-react"
+import { CloudOff, Gem, HeartHandshake, Hourglass, Package, RefreshCw, ScrollText, Sparkles, TrendingUp, Users } from "lucide-react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,18 +13,19 @@ interface DashboardData {
   recent: { id: number; gm_name: string; action: string; target_type: string; target_id: string; created_at: string }[]
 }
 
-const METRIC_LABELS: Record<string, { label: string; hint: string }> = {
-  players: { label: "注册玩家", hint: "玩家表总人数" },
-  active_today: { label: "今日活跃", hint: "今天有过游戏操作的玩家" },
-  couples: { label: "仙侣结缘", hint: "已缔结的仙侣关系" },
-  pending_reviews: { label: "待审核", hint: "排队中的道号与内容审核" },
-  items: { label: "物品种类", hint: "物品目录条目" },
+const METRIC_LABELS: Record<string, { label: string; hint: string; icon: typeof Users }> = {
+  players: { label: "注册玩家", hint: "玩家表总人数", icon: Users },
+  active_today: { label: "今日活跃", hint: "今天有过游戏操作的玩家", icon: Sparkles },
+  couples: { label: "仙侣结缘", hint: "已缔结的仙侣关系", icon: HeartHandshake },
+  pending_reviews: { label: "待审核", hint: "排队中的道号与内容审核", icon: Hourglass },
+  items: { label: "物品种类", hint: "物品目录条目", icon: Package },
 }
 
 const METRIC_ORDER = ["players", "active_today", "couples", "pending_reviews", "items"]
 
 function MetricCard({ metric, value, index }: { metric: string; value: number; index: number }) {
-  const meta = METRIC_LABELS[metric] ?? { label: metric, hint: "" }
+  const meta = METRIC_LABELS[metric] ?? { label: metric, hint: "", icon: Gem }
+  const Icon = meta.icon
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -32,12 +33,17 @@ function MetricCard({ metric, value, index }: { metric: string; value: number; i
       transition={{ type: "spring", stiffness: 300, damping: 26, delay: Math.min(index * 0.05, 0.4) }}
       title={meta.hint || undefined}
     >
-      <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent opacity-60 transition-opacity duration-200 group-hover:opacity-100" />
-        <CardContent className="p-5">
-          <div className="text-[13px] font-medium text-muted-foreground">{meta.label}</div>
-          <div className="tnum mt-2 font-mono text-[26px] font-semibold leading-none tracking-tight">
-            {value.toLocaleString()}
+      <Card className="glass glass-hover group relative h-full overflow-hidden rounded-2xl border-transparent">
+        <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-primary/10 blur-2xl transition-opacity duration-300 group-hover:bg-gold/15" />
+        <CardContent className="relative flex items-start justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <div className="truncate text-xs font-medium text-muted-foreground">{meta.label}</div>
+            <div className="tnum mt-1.5 font-mono text-[28px] font-semibold leading-none tracking-tight">
+              {value.toLocaleString()}
+            </div>
+          </div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/25 bg-gold/10 text-gold">
+            <Icon className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>
@@ -47,7 +53,7 @@ function MetricCard({ metric, value, index }: { metric: string; value: number; i
 
 function TrendChart({ trend }: { trend: { day: string; count: number }[] }) {
   return (
-    <Card>
+    <Card className="glass rounded-2xl border-transparent">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="h-4 w-4 text-primary" />
@@ -87,7 +93,7 @@ function TrendChart({ trend }: { trend: { day: string; count: number }[] }) {
 
 function RecentLogs({ logs }: { logs: DashboardData["recent"] }) {
   return (
-    <Card>
+    <Card className="glass rounded-2xl border-transparent">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ScrollText className="h-4 w-4 text-gold" />
@@ -135,10 +141,12 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">数据总览</h1>
-        <p className="text-sm text-muted-foreground">玩家、活跃与运行概况</p>
+    <div className="space-y-5">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">数据总览</h1>
+          <p className="text-sm text-muted-foreground">玩家、活跃与运行概况</p>
+        </div>
       </div>
       {isLoading ? (
         <div className="space-y-4">
@@ -181,11 +189,21 @@ export default function Dashboard() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {metricKeys.slice(0, 8).map((key, i) => (
-              <MetricCard key={key} metric={key} value={Number(metrics[key] ?? 0)} index={i} />
-            ))}
-          </div>
+          {metricKeys.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {metricKeys.slice(0, 8).map((key, i) => (
+                <MetricCard key={key} metric={key} value={Number(metrics[key] ?? 0)} index={i} />
+              ))}
+            </div>
+          ) : (
+            <Card className="glass rounded-2xl border-transparent">
+              <CardContent className="flex flex-col items-center gap-2 p-8 text-center">
+                <Sparkles className="h-5 w-5 text-gold" />
+                <div className="text-sm font-medium">暂无指标数据</div>
+                <p className="text-xs text-muted-foreground">等第一批玩家进入仙途后，这里会亮起来。</p>
+              </CardContent>
+            </Card>
+          )}
           <div className="grid gap-4 lg:grid-cols-2">
             <TrendChart trend={data.trend ?? []} />
             <RecentLogs logs={data.recent ?? []} />
