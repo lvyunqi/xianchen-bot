@@ -102,6 +102,7 @@ type Game struct {
 	players   *storage.PlayerRepository
 	counters  PlayerCounters
 	social    *storage.SocialRepository
+	shop      *storage.ShopRepository
 	logs      *storage.LogRepository
 	startedAt time.Time
 }
@@ -111,7 +112,7 @@ func NewGame(store *storage.Store) (*Game, error) {
 		return nil, err
 	}
 	players := storage.NewPlayerRepository(store.DB)
-	game := &Game{store: store, players: players, counters: players, social: storage.NewSocialRepository(store.DB), logs: storage.NewLogRepository(store.DB), startedAt: time.Now()}
+	game := &Game{store: store, players: players, counters: players, social: storage.NewSocialRepository(store.DB), shop: storage.NewShopRepository(store.DB), logs: storage.NewLogRepository(store.DB), startedAt: time.Now()}
 	if err := game.repairMigratedArtifactSlots(); err != nil {
 		return nil, err
 	}

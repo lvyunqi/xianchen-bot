@@ -8,6 +8,7 @@ import (
 
 	"xianlv/internal/handler"
 	"xianlv/internal/model"
+	"xianlv/internal/storage"
 )
 
 type catalogSection struct {
@@ -207,7 +208,7 @@ func (g *Game) catalogCount(category string) int64 {
 	case "种子":
 		_ = g.store.DB.Model(&model.Item{}).Where("category_name = ?", "种子").Count(&count).Error
 	case "商城":
-		_ = g.store.DB.Model(&model.ShopEntry{}).Where("enabled = ?", true).Count(&count).Error
+		count, _ = g.shop.CountEnabled(storage.ShopFilter{})
 	case "活动":
 		_ = g.store.DB.Model(&model.Activity{}).Count(&count).Error
 	case "竞技段位":

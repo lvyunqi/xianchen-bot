@@ -57,12 +57,11 @@ func (g *Game) giftPackList(player *model.Player, argument string) (GameResult, 
 		Currency string
 		Price    int64
 	}
-	var shopRows []shopSource
-	_ = g.store.DB.Model(&model.ShopEntry{}).Select("item_id, currency, price").Where("enabled = ? AND item_id IN ?", true, ids).Order("price").Scan(&shopRows).Error
-	sources := make(map[uint]shopSource, len(shopRows))
-	for _, source := range shopRows {
-		if _, exists := sources[source.ItemID]; !exists {
-			sources[source.ItemID] = source
+	shopEntries, _ := g.shop.PriceSourceByItems(ids)
+	sources := make(map[uint]shopSource, len(shopEntries))
+	for _, entry := range shopEntries {
+		if _, exists := sources[entry.ItemID]; !exists {
+			sources[entry.ItemID] = shopSource{ItemID: entry.ItemID, Currency: entry.Currency, Price: entry.Price}
 		}
 	}
 	var ownedTypes int64

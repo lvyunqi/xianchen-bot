@@ -79,23 +79,20 @@ func (g *Game) cumulativeRecharge(player *model.Player) GameResult {
 func (g *Game) shopList(player *model.Player, argument string, seedsOnly bool) (GameResult, bool, error) {
 	const pageSize = 8
 	page := maxInt(int(parsePositiveInt(strings.TrimSpace(argument), 1)), 1)
-	query := g.store.DB.Model(&model.ShopEntry{}).Where("enabled = ?", true)
+	filter := storage.ShopFilter{}
 	if seedsOnly {
-		query = query.Where("code LIKE ?", "seed_shop_%")
+		filter.CodeLike = "seed_shop_%"
 	} else {
-		query = query.Where("code NOT LIKE ? AND currency = ?", "seed_shop_%", "灵石")
+		filter.CodeNotIn = "seed_shop_%"
+		filter.Currency = "灵石"
 	}
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	rows, total, err := g.shop.ListEnabledPaged(filter, page, pageSize)
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt(int((total+pageSize-1)/pageSize), 1)
 	if page > pages {
 		page = pages
-	}
-	var rows []model.ShopEntry
-	if err := query.Order("sort,id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
-		return GameResult{}, true, err
 	}
 	title := "仙门货铺"
 	command := "货铺"
@@ -246,18 +243,13 @@ func currencyAcquisitionGuide(currency string) (string, []string) {
 func (g *Game) currencyShopList(player *model.Player, raw, currency string) (GameResult, bool, error) {
 	page := maxInt(int(parsePositiveInt(strings.TrimSpace(raw), 1)), 1)
 	const pageSize = 8
-	query := g.store.DB.Model(&model.ShopEntry{}).Where("enabled = ? AND currency = ? AND code NOT LIKE ?", true, currency, "seed_shop_%")
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	rows, total, err := g.shop.ListEnabledPaged(storage.ShopFilter{Currency: currency, CodeNotIn: "seed_shop_%"}, page, pageSize)
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt((int(total)+pageSize-1)/pageSize, 1)
 	if page > pages {
 		page = pages
-	}
-	var rows []model.ShopEntry
-	if err := query.Order("sort,id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
-		return GameResult{}, true, err
 	}
 	balance := player.SilverCoins
 	buyCommand := "银币购买 "

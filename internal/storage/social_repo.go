@@ -23,3 +23,52 @@ func (r *SocialRepository) Create(msg *model.SocialMessage) error {
 func (r *SocialRepository) CreateInTx(tx *gorm.DB, msg *model.SocialMessage) error {
 	return tx.Create(msg).Error
 }
+
+// ListReceivedPaged 按收件人+类型分页读信笺（diary 等自发自收场景传相同 ID）。
+func (r *SocialRepository) ListReceivedPaged(receiverID uint, typ string, page, pageSize int) (rows []model.SocialMessage, total int64, err error) {
+	query := r.db.Model(&model.SocialMessage{}).
+		Where("receiver_id = ? AND type = ?", receiverID, typ)
+	if err = query.Count(&total).Error; err != nil {
+		return
+	}
+	err = query.Order("id DESC").
+		Offset((page - 1) * pageSize).Limit(pageSize).
+		Find(&rows).Error
+	return
+}
+
+// CountUnread 按收件人统计一组类型的未读数。
+func (r *SocialRepository) CountUnread(receiverID uint, types []string) (int64, error) {
+	var unread int64
+	err := r.db.Model(&model.SocialMessage{}).
+		Where("receiver_id = ? AND type IN ? AND read = ?", receiverID, types, false).
+		Count(&unread).Error
+	return unread, err
+}
+
+// ListNotificationsPaged 系统通知分页（含未读数），通知类型由调用方传入。
+func (r *SocialRepository) ListNotificationsPaged(receiverID uint, types []string, page, pageSize int) (rows []model.SocialMessage, total, unread int64, err error) {
+	base := r.db.Model(&model.SocialMessage{}).Where("receiver_id = ? AND type IN ?", receiverID, types)
+	if err = base.Count(&total).Error; err != nil {
+		return
+	}
+	if unread, err = r.CountUnread(receiverID, types); err != nil {
+		return
+	}
+	err = base.Order("id DESC").
+		Offset((page - 1) * pageSize).Limit(pageSize).
+		Find(&rows).Error
+	return
+}
+
+// MarkReadByIDs 批量标记已读。
+func (r *SocialRepository) MarkReadByIDs(ids []uint) error {
+	return r.db.Model(&model.SocialMessage{}).Where("id IN ?", ids).Update("read", true).Error
+}
+
+// MarkTypeRead 按收件人+类型全量标记已读。
+func (r *SocialRepository) MarkTypeRead(receiverID uint, typ string) error {
+	return r.db.Model(&model.SocialMessage{}).
+		Where("receiver_id = ? AND type = ? AND read = ?", receiverID, typ, false).
+		Update("read", true).Error
+}

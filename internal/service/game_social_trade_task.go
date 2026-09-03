@@ -1147,18 +1147,13 @@ func (g *Game) executeSpecial(player *model.Player, command handler.ParsedComman
 func (g *Game) diaryEntries(player *model.Player, raw string) (GameResult, bool, error) {
 	const pageSize = 5
 	page := maxInt(int(parsePositiveInt(strings.TrimSpace(raw), 1)), 1)
-	query := g.store.DB.Model(&model.SocialMessage{}).Where("sender_id = ? AND receiver_id = ? AND type = ?", player.ID, player.ID, "diary")
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	rows, total, err := g.social.ListReceivedPaged(player.ID, "diary", page, pageSize)
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt((int(total)+pageSize-1)/pageSize, 1)
 	if page > pages {
 		page = pages
-	}
-	var rows []model.SocialMessage
-	if err := query.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
-		return GameResult{}, true, err
 	}
 	lines := []string{fmt.Sprintf("道友：%s · 共%d篇 · 第%d/%d页", player.DaoName, total, page, pages), "━━━━━━━━━━━"}
 	for _, row := range rows {
@@ -1180,12 +1175,12 @@ func (g *Game) diaryEntries(player *model.Player, raw string) (GameResult, bool,
 func (g *Game) receivedMessages(player *model.Player, raw string) (GameResult, bool, error) {
 	const pageSize = 6
 	page := maxInt(int(parsePositiveInt(strings.TrimSpace(raw), 1)), 1)
-	query := g.store.DB.Model(&model.SocialMessage{}).Where("receiver_id = ? AND type = ?", player.ID, "message")
-	var total, unread int64
-	if err := query.Count(&total).Error; err != nil {
+	_, total, err := g.social.ListReceivedPaged(player.ID, "message", 1, 1)
+	if err != nil {
 		return GameResult{}, true, err
 	}
-	if err := g.store.DB.Model(&model.SocialMessage{}).Where("receiver_id = ? AND type = ? AND read = ?", player.ID, "message", false).Count(&unread).Error; err != nil {
+	unread, err := g.social.CountUnread(player.ID, []string{"message"})
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt((int(total)+pageSize-1)/pageSize, 1)
@@ -1217,7 +1212,7 @@ func (g *Game) receivedMessages(player *model.Player, raw string) (GameResult, b
 		lines = append(lines, "信笺空空，尚未收到道友留言。")
 	}
 	if len(ids) > 0 {
-		_ = g.store.DB.Model(&model.SocialMessage{}).Where("id IN ?", ids).Update("read", true).Error
+		_ = g.social.MarkReadByIDs(ids)
 	}
 	actions := []string{"留言 @对方 内容", "通知"}
 	if page > 1 {

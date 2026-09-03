@@ -1353,17 +1353,12 @@ func (g *Game) festivalSale(player *model.Player, raw string) (GameResult, bool,
 	}
 	const pageSize = 6
 	page := maxInt(int(parsePositiveInt(raw, 1)), 1)
-	query := g.store.DB.Model(&model.ShopEntry{}).Where("enabled = ? AND code LIKE ?", true, "event_sale_%")
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	rows, total, err := g.shop.ListEnabledPaged(storage.ShopFilter{CodeLike: "event_sale_%"}, page, pageSize)
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt(int((total+pageSize-1)/pageSize), 1)
 	page = minInt(page, pages)
-	var rows []model.ShopEntry
-	if err := query.Order("sort,id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error; err != nil {
-		return GameResult{}, true, err
-	}
 	lines := []string{fmt.Sprintf("银币余额：%d · 第%d/%d页 · %s", player.SilverCoins, page, pages, activityWindowText(activity, time.Now())), "活动期内不限购，购买数量只受银币余额与安全整数范围约束。", "━━━━━━━━━━━"}
 	actions := []string{"庆典专属", "货币", "签到"}
 	for _, row := range rows {

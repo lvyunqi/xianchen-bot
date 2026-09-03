@@ -239,17 +239,14 @@ func (g *Game) sectStore(player *model.Player, argument string) (GameResult, boo
 func (g *Game) sectStorePage(player *model.Player, member model.SectMember, page int) (GameResult, bool, error) {
 	const pageSize = 8
 	page = maxInt(page, 1)
-	var total int64
-	query := g.store.DB.Model(&model.ShopEntry{}).Where("enabled = ? AND currency = ?", true, "贡献")
-	if err := query.Count(&total).Error; err != nil {
+	rows, total, err := g.shop.ListEnabledPaged(storage.ShopFilter{Currency: "贡献"}, page, pageSize)
+	if err != nil {
 		return GameResult{}, true, err
 	}
 	pages := maxInt(int((total+pageSize-1)/pageSize), 1)
 	if page > pages {
 		page = pages
 	}
-	var rows []model.ShopEntry
-	_ = query.Order("sort,id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&rows).Error
 	lines := []string{fmt.Sprintf("当前贡献：%d · 第%d/%d页", member.Contribution, page, pages), "贡献只来自宗务、宗战和宗门协作，用于兑换宗门物资。", "━━━━━━━━━━━"}
 	actions := []string{"贡献", "宗务"}
 	for _, row := range rows {

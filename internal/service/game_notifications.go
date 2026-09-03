@@ -84,7 +84,7 @@ func (g *Game) notificationInbox(player *model.Player, raw string, unreadOnly bo
 		lines = append(lines, message)
 	}
 	if len(passiveIDs) > 0 {
-		if err := g.store.DB.Model(&model.SocialMessage{}).Where("id IN ?", passiveIDs).Update("read", true).Error; err != nil {
+		if err := g.social.MarkReadByIDs(passiveIDs); err != nil {
 			return GameResult{}, true, err
 		}
 	}
