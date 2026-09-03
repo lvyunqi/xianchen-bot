@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 function navLinkClass(isActive: boolean, compact?: boolean) {
   return cn(
-    "group relative flex w-full min-w-0 cursor-pointer flex-row flex-nowrap items-center gap-2.5 rounded-md px-3 py-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
+    "group relative flex h-9 w-full min-w-0 cursor-pointer flex-row flex-nowrap items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
     isActive ? "bg-accent text-accent-foreground" : "",
     compact && "justify-center px-0",
   )
@@ -42,28 +42,14 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
                   >
                     {({ isActive }) => (
                       <>
-                        {isActive && (
-                          <motion.span
-                            layoutId="nav-active"
-                            className="absolute inset-0 rounded-lg border border-gold/40 bg-primary/20"
-                            transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                          />
-                        )}
-                        {isActive && !compact && (
-                          <motion.span
-                            layoutId="nav-marker"
-                            className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-gold"
-                            transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                          />
-                        )}
                         <r.icon
                           className={cn(
-                            "relative z-10 h-4 w-4 shrink-0 transition-colors duration-200",
+                            "relative h-4 w-4 shrink-0",
                             isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
                           )}
                         />
                         {!compact && (
-                          <span className={cn("relative z-10 truncate", isActive && "font-medium")}>{r.title}</span>
+                          <span className={cn("min-w-0 truncate whitespace-nowrap", isActive && "font-medium")}>{r.title}</span>
                         )}
                       </>
                     )}
@@ -88,28 +74,14 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
         >
           {({ isActive }) => (
             <>
-              {isActive && (
-                <motion.span
-                  layoutId="nav-active"
-                  className="absolute inset-0 rounded-lg border border-gold/40 bg-primary/20"
-                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                />
-              )}
-              {isActive && !compact && (
-                <motion.span
-                  layoutId="nav-marker"
-                  className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-gold"
-                  transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                />
-              )}
               <Database
                 className={cn(
-                  "relative z-10 h-4 w-4 shrink-0 transition-colors duration-200",
+                  "relative h-4 w-4 shrink-0",
                   isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
                 )}
               />
               {!compact && (
-                <span className={cn("relative z-10 truncate", isActive && "font-medium")}>数据运维</span>
+                <span className={cn("min-w-0 truncate whitespace-nowrap", isActive && "font-medium")}>数据运维</span>
               )}
             </>
           )}
