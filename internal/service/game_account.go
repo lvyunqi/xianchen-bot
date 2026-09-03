@@ -32,7 +32,7 @@ func (g *Game) confirmSelfDelete(player *model.Player, argument string) (GameRes
 	}
 	name := player.DaoName
 	accountID := player.AccountID
-	_ = g.store.DB.Create(&model.GameLog{Level: "warn", Type: "self_delete", PlayerID: player.ID, Message: fmt.Sprintf("玩家%s（%s）完成二次确认并自行删除道籍", name, accountID)}).Error
+	_ = g.logs.Game("warn", "self_delete", player.ID, fmt.Sprintf("玩家%s（%s）完成二次确认并自行删除道籍", name, accountID), "")
 	if err := g.players.Delete(player.ID); err != nil {
 		return GameResult{}, true, err
 	}

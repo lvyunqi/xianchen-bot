@@ -101,6 +101,7 @@ type Game struct {
 	store     *storage.Store
 	players   *storage.PlayerRepository
 	social    *storage.SocialRepository
+	logs      *storage.LogRepository
 	startedAt time.Time
 }
 
@@ -108,7 +109,7 @@ func NewGame(store *storage.Store) (*Game, error) {
 	if err := SeedPlayerCommandMenus(store); err != nil {
 		return nil, err
 	}
-	game := &Game{store: store, players: storage.NewPlayerRepository(store.DB), social: storage.NewSocialRepository(store.DB), startedAt: time.Now()}
+	game := &Game{store: store, players: storage.NewPlayerRepository(store.DB), social: storage.NewSocialRepository(store.DB), logs: storage.NewLogRepository(store.DB), startedAt: time.Now()}
 	if err := game.repairMigratedArtifactSlots(); err != nil {
 		return nil, err
 	}
