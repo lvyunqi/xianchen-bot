@@ -45,7 +45,7 @@ func (g *Game) requestDaoNameTransfer(player *model.Player, args []string) (Game
 	request := daoNameTransferRequest{TransferredName: player.DaoName, DonorNewName: newName}
 	encoded, _ := json.Marshal(request)
 	row := model.SocialMessage{SenderID: player.ID, ReceiverID: target.ID, Type: "dao_transfer", Content: string(encoded)}
-	if err := g.store.DB.Create(&row).Error; err != nil {
+	if err := g.social.Create(&row); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "道号转让请求已送达", Content: fmt.Sprintf("受让人：%s\n转让道号：%s\n你的新道号：%s\n手续费：500银币（接受时扣除）\n请求二十四小时内有效，对方发送 `接受道号` 完成。", target.DaoName, player.DaoName, newName), Actions: []string{"状态", "货币"}}, true, nil

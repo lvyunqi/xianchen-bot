@@ -109,7 +109,7 @@ func (g *Game) requestBond(player *model.Player, argument string) (GameResult, b
 		return GameResult{Title: "对方道籍不全", Content: target.DaoName + "尚未登记性别，暂不能生成完整仙侣道契。请对方先发送“性别 男/女”。", Actions: []string{"寻缘", "道侣菜单"}}, true, nil
 	}
 	request := model.SocialMessage{SenderID: player.ID, ReceiverID: target.ID, Type: "couple_request", Content: "请求结缘", Read: false}
-	if err := g.store.DB.Create(&request).Error; err != nil {
+	if err := g.social.Create(&request); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "结缘请求已送达", Content: fmt.Sprintf("你向%s递出同心玉。\n对方发送 `应缘` 后即可结为仙侣。", target.DaoName)}, true, nil
@@ -243,7 +243,7 @@ func (g *Game) requestGuard(player *model.Player) (GameResult, bool, error) {
 		return GameResult{Title: "求护失败", Content: "你尚未结缘。"}, true, nil
 	}
 	message := model.SocialMessage{SenderID: player.ID, ReceiverID: partner.ID, Type: "guard_request", Content: player.DaoName + "请求你为其护法"}
-	if err := g.store.DB.Create(&message).Error; err != nil {
+	if err := g.social.Create(&message); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "护法请求已送达", Content: "已通知" + partner.DaoName + "。"}, true, nil
@@ -379,7 +379,7 @@ func (g *Game) requestDissolve(player *model.Player) (GameResult, bool, error) {
 		return GameResult{Title: "缘尽", Content: fmt.Sprintf("双方已确认，%s与%s的仙侣关系解除。", player.DaoName, partner.DaoName)}, true, nil
 	}
 	request := model.SocialMessage{SenderID: player.ID, ReceiverID: partner.ID, Type: "dissolve_request", Content: "请求解缘"}
-	if err := g.store.DB.Create(&request).Error; err != nil {
+	if err := g.social.Create(&request); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "解缘确认", Content: fmt.Sprintf("解缘请求已送达%s。\n对方发送 `解缘` 后关系才会解除。", partner.DaoName)}, true, nil

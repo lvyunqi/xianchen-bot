@@ -150,5 +150,5 @@ func (g *Game) createPlayerNotification(playerID uint, category, content string)
 	if strings.TrimSpace(category) != "" {
 		content = "【" + strings.TrimSpace(category) + "】" + content
 	}
-	return g.store.DB.Create(&model.SocialMessage{ReceiverID: playerID, Type: "notification", Content: content, Read: false}).Error
+	return g.social.Create(&model.SocialMessage{ReceiverID: playerID, Type: "notification", Content: content, Read: false})
 }

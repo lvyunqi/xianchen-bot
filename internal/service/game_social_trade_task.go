@@ -73,7 +73,7 @@ func (g *Game) whisper(player *model.Player, args []string) (GameResult, bool, e
 		return rejected, true, err
 	}
 	message := model.SocialMessage{SenderID: player.ID, ReceiverID: target.ID, Type: "whisper", Content: content}
-	if err := g.store.DB.Create(&message).Error; err != nil {
+	if err := g.social.Create(&message); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "密语已送达", Content: fmt.Sprintf("收信人：%s\n内容：%s", target.DaoName, content)}, true, nil
@@ -382,7 +382,7 @@ func (g *Game) barter(player *model.Player, args []string) (GameResult, bool, er
 			return err
 		}
 		message := model.SocialMessage{SenderID: player.ID, ReceiverID: target.ID, Type: "barter_request", Content: string(payload), Read: false}
-		return tx.Create(&message).Error
+		return g.social.CreateInTx(tx, &message)
 	})
 	if err != nil {
 		return GameResult{}, true, err
@@ -1103,7 +1103,7 @@ func (g *Game) executeSpecial(player *model.Player, command handler.ParsedComman
 			return rejected, true, err
 		}
 		row := model.SocialMessage{SenderID: player.ID, ReceiverID: player.ID, Type: "diary", Content: content, Read: true}
-		if err := g.store.DB.Create(&row).Error; err != nil {
+		if err := g.social.Create(&row); err != nil {
 			return GameResult{}, true, err
 		}
 		_ = g.queueContentReview("日记", player, content)
@@ -1124,7 +1124,7 @@ func (g *Game) executeSpecial(player *model.Player, command handler.ParsedComman
 			return rejected, true, err
 		}
 		row := model.SocialMessage{SenderID: player.ID, ReceiverID: target.ID, Type: "message", Content: content}
-		if err := g.store.DB.Create(&row).Error; err != nil {
+		if err := g.social.Create(&row); err != nil {
 			return GameResult{}, true, err
 		}
 		_ = g.queueContentReview("留言", player, content)

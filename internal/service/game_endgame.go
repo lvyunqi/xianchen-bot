@@ -593,7 +593,7 @@ func (g *Game) executeEncounter(player *model.Player, command handler.ParsedComm
 		expires := time.Now().Add(60 * time.Minute)
 		_ = g.setPlayerValue(player.ID, "buff.blessed_land", "cultivation:1.5", &expires)
 		row := model.SocialMessage{ReceiverID: player.ID, Type: "encounter", Content: "发现福地洞天，修炼收益提升50%一小时", Read: true}
-		_ = g.store.DB.Create(&row).Error
+		_ = g.social.Create(&row)
 		return GameResult{Title: "福地洞天", Content: fmt.Sprintf("你找到一处灵雾环绕的洞府。\n一小时内修炼收益+50%%\n剩余体力：%d", remaining), Actions: []string{"修炼"}}, true, nil
 	default:
 		return GameResult{}, false, nil
