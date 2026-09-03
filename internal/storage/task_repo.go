@@ -27,6 +27,7 @@ func (r *TaskRepository) ResetDaily() error {
 		if err := tx.Where("assigned_date = ?", today).Delete(&model.PlayerTask{}).Error; err != nil {
 			return err
 		}
-		return tx.Model(&model.Player{}).Updates(map[string]any{"daily_task_date": ""}).Error
+		// 全表重置每日任务标记：GORM 要求显式声明无 WHERE 意图
+		return tx.Model(&model.Player{}).Where("1 = 1").Updates(map[string]any{"daily_task_date": ""}).Error
 	})
 }
