@@ -22,7 +22,7 @@ func retentionTestStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.SocialMessage{}, &model.GameLog{}, &model.Broadcast{}, &model.TradeListing{}, &model.PlayerValue{}, &model.RankEntry{}); err != nil {
+	if err := db.AutoMigrate(&model.SocialMessage{}, &model.GameLog{}, &model.Broadcast{}, &model.TradeListing{}, &model.PlayerValue{}, &model.RankEntry{}, &model.Notice{}, &model.Mail{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	t.Cleanup(func() {

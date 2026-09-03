@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	"xianlv/internal/model"
@@ -101,5 +103,47 @@ func (s *Store) ensureRuntimeHotfixContent() error {
 			return err
 		}
 	}
+	return s.pruneCatalogContent()
+}
+
+// pruneCatalogContent 清理超出目录规模的样板公告与邮件（幂等，每次启动执行）。
+// 只删除纯文本内容类目录条目；物品、地图等被玩家数据引用的目录不受影响。
+func (s *Store) pruneCatalogContent() error {
+	limit := contentSeedLimit()
+	var staleNotices []model.Notice
+	if err := s.DB.Where("code LIKE ?", "catalog_notice_%").Find(&staleNotices).Error; err != nil {
+		return err
+	}
+	for _, notice := range staleNotices {
+		if catalogSequence(notice.Code) > limit {
+			if err := s.DB.Delete(&notice).Error; err != nil {
+				return err
+			}
+		}
+	}
+	var staleMails []model.Mail
+	if err := s.DB.Where("code LIKE ?", "catalog_mail_%").Find(&staleMails).Error; err != nil {
+		return err
+	}
+	for _, mail := range staleMails {
+		if catalogSequence(mail.Code) > limit {
+			if err := s.DB.Delete(&mail).Error; err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+// catalogSequence 提取 catalog_xxx_<n> 里的序号；无法解析时返回 0（视为保留）。
+func catalogSequence(code string) int {
+	idx := strings.LastIndex(code, "_")
+	if idx < 0 || idx+1 >= len(code) {
+		return 0
+	}
+	n, err := strconv.Atoi(code[idx+1:])
+	if err != nil {
+		return 0
+	}
+	return n
 }

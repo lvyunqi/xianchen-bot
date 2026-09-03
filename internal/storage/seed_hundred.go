@@ -341,11 +341,13 @@ func isGeneratedWorldResource(name string) bool {
 	return false
 }
 
+// contentSeedLimit 控制目录生成规模。历史值 1000 会向每个目录灌入一千条样板条目
+// （公告/邮件/商店/兑换码各一千），是启动库体积 47MB 的主要来源；正式环境回落到 100。
 func contentSeedLimit() int {
 	if strings.Contains(strings.ToLower(os.Args[0]), ".test") {
 		return 3
 	}
-	return 1000
+	return 100
 }
 
 type dungeonAccess struct {
