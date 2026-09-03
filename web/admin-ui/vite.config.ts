@@ -26,10 +26,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
+          // 只把 recharts 系叶子库独立成 chunk：Dashboard 主路径单向依赖它，
+          // 无循环引用风险。react/vendor 混拆会产生跨 chunk TDZ（Cannot access before init）。
           if (!id.includes("node_modules")) return undefined
-          if (id.includes("recharts") || id.includes("d3-") || id.includes("victory-vendor")) return "charts"
-          if (id.includes("react") || id.includes("scheduler")) return "vendor-react"
-          return "vendor"
+          if (id.includes("recharts") || id.includes("d3-") || id.includes("victory-vendor") || id.includes("lodash")) return "charts"
+          return undefined
         },
       },
     },
