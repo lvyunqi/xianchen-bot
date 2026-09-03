@@ -156,7 +156,7 @@ func appendPlayerLevelSettlement(result *GameResult, player model.Player, progre
 
 func (g *Game) playerLevelOverview(player *model.Player) (GameResult, bool, error) {
 	if player.Level < 1 || player.Experience < 0 {
-		if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Updates(map[string]any{"level": maxInt(player.Level, 1), "experience": max64(player.Experience, 0)}).Error; err != nil {
+		if err := g.players.UpdateColumns(player.ID, map[string]any{"level": maxInt(player.Level, 1), "experience": max64(player.Experience, 0)}); err != nil {
 			return GameResult{}, true, err
 		}
 		player.Level = maxInt(player.Level, 1)

@@ -181,6 +181,31 @@ func (r *PlayerRepository) adjustAll(column string, value any) error {
 	return r.db.Model(&model.Player{}).Where("deleted_at IS NULL").Update(column, value).Error
 }
 
+// UpdateColumn 单玩家单列更新；column 必须是调用方代码里的字面量，不得拼接外部输入。
+func (r *PlayerRepository) UpdateColumn(id uint, column string, value any) error {
+	return r.db.Model(&model.Player{}).Where("id = ?", id).Update(column, value).Error
+}
+
+// UpdateColumnWhere 带守卫条件的原子更新（如"mana >= 扣除量"防负余额），返回是否命中行。
+func (r *PlayerRepository) UpdateColumnWhere(id uint, column string, value any, guard string, guardArgs ...any) (bool, error) {
+	query := r.db.Model(&model.Player{}).Where("id = ?", id)
+	if guard != "" {
+		query = query.Where(guard, guardArgs...)
+	}
+	res := query.Update(column, value)
+	return res.RowsAffected > 0, res.Error
+}
+
+// UpdateColumns 单玩家多列更新。
+func (r *PlayerRepository) UpdateColumns(id uint, changes map[string]any) error {
+	return r.db.Model(&model.Player{}).Where("id = ?", id).Updates(changes).Error
+}
+
+// UpdateAvatarByAccount 按平台账号更新头像（头像同步场景按账号定位）。
+func (r *PlayerRepository) UpdateAvatarByAccount(accountID, avatarURL string) error {
+	return r.db.Model(&model.Player{}).Where("account_id = ?", accountID).Update("avatar_url", avatarURL).Error
+}
+
 // GrantAllSpiritStones 全服发放灵石（GM"天降灵石"）。
 func (r *PlayerRepository) GrantAllSpiritStones(delta int64) error {
 	return r.adjustAll("spirit_stones", gorm.Expr("spirit_stones + ?", delta))

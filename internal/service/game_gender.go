@@ -47,7 +47,7 @@ func (g *Game) playerGender(player *model.Player, raw string) (GameResult, bool,
 	if hasPlayerGender(player) && player.CoupleID != 0 {
 		return GameResult{Title: "道籍性别暂不可更改", Content: fmt.Sprintf("当前性别：%s\n已有生效中的仙侣因果。为避免仙侣档案前后矛盾，结缘期间不能改写已登记性别；未登记的旧角色仍可正常补录。", current), Actions: []string{"心意", "道侣菜单", "性别"}}, true, nil
 	}
-	if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("gender", target).Error; err != nil {
+	if err := g.players.UpdateColumn(player.ID, "gender", target); err != nil {
 		return GameResult{}, true, err
 	}
 	return GameResult{Title: "性别登记完成", Content: fmt.Sprintf("道号：%s\n性别：%s\n━━━━━━━━━━━\n角色状态、修仙档案、寻缘名单与仙侣互动现已使用这份道籍资料。", player.DaoName, target), Actions: []string{"状态", "档案", "寻缘", "道侣菜单"}}, true, nil

@@ -53,7 +53,7 @@ func (g *Game) checkIn(player *model.Player) (GameResult, bool, error) {
 	if silverReward < 0 {
 		silverReward = 0
 	}
-	if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("silver_coins", gorm.Expr("silver_coins + ?", silverReward)).Error; err != nil {
+	if _, err := g.players.UpdateColumnWhere(player.ID, "silver_coins", gorm.Expr("silver_coins + ?", silverReward), ""); err != nil {
 		return GameResult{}, true, err
 	}
 	nextDay := streak%7 + 1

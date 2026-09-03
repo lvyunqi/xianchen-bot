@@ -812,7 +812,7 @@ func (g *Game) reconcilePetCare(player *model.Player) ([]string, error) {
 		switch {
 		case after < 15:
 			damage := max64(g.playerWithActiveSkillStats(player).MaxHealth/10, 1)
-			if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("health", gorm.Expr("MAX(health - ?, 1)", damage)).Error; err != nil {
+			if err := g.players.UpdateColumn(player.ID, "health", gorm.Expr("MAX(health - ?, 1)", damage)); err != nil {
 				return nil, err
 			}
 			events = append(events, fmt.Sprintf("【反噬】%s连续%d日未被照料，忠诚%d→%d，挣脱时反噬主人气血%d并拒绝出战。", pet.Name, days, before, after, damage))

@@ -97,7 +97,7 @@ func (g *Game) discoverLocalLeylines(player *model.Player) (GameResult, bool, er
 	if player.Mana < minimumMana {
 		return GameResult{Title: "神识不足", Content: fmt.Sprintf("探查%s的地脉至少需要法力%d，当前法力%d。", player.Location, minimumMana, player.Mana), Actions: []string{"状态", "灵脉地图"}}, true, nil
 	}
-	if err := g.store.DB.Model(&model.Player{}).Where("id = ? AND mana >= ?", player.ID, minimumMana).Update("mana", gorm.Expr("mana - ?", minimumMana)).Error; err != nil {
+	if _, err := g.players.UpdateColumnWhere(player.ID, "mana", gorm.Expr("mana - ?", minimumMana), "mana >= ?", minimumMana); err != nil {
 		return GameResult{}, true, err
 	}
 	lines := []string{fmt.Sprintf("神识沉入%s地底，消耗法力%d，共发现%d条灵脉。", player.Location, minimumMana, len(rows)), "━━━━━━━━━━━"}
@@ -344,7 +344,7 @@ func (g *Game) gatherLeylineAura(player *model.Player, raw string) (GameResult, 
 	}
 	aura := row.AuraPerMinute * int64(10+row.MeditationSlots)
 	cultivation := int64(float64(aura) * row.CultivationMultiplier / 4)
-	if err := g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("cultivation", gorm.Expr("cultivation + ?", cultivation)).Error; err != nil {
+	if err := g.players.UpdateColumn(player.ID, "cultivation", gorm.Expr("cultivation + ?", cultivation)); err != nil {
 		return GameResult{}, true, err
 	}
 	_, _ = g.addPlayerValueInt(player.ID, "currency.leyline_aura", aura)

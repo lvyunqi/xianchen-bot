@@ -78,7 +78,7 @@ func (g *Game) talkToLocalNPC(player *model.Player, raw string) (GameResult, boo
 	if _, valueErr := g.playerValue(player.ID, key); valueErr != nil {
 		firstMeeting = true
 		_ = g.setPlayerValue(player.ID, key, "true", nil)
-		_ = g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Update("reputation", gorm.Expr("reputation + 1")).Error
+		_ = g.players.UpdateColumn(player.ID, "reputation", gorm.Expr("reputation + 1"))
 	}
 	tasks := decodeTextList(location.TasksJSON)
 	lines := []string{
@@ -388,7 +388,7 @@ func (g *Game) finishWorldBossBattle(player *model.Player, state mapMonsterBattl
 	_ = g.clearMapMonsterBattle(player.ID)
 	_, _ = g.addPlayerValueInt(player.ID, "stats.battles", 1)
 	remainingHP := max64(state.PlayerHP, 1)
-	_ = g.store.DB.Model(&model.Player{}).Where("id = ?", player.ID).Updates(map[string]any{"health": remainingHP, "mana": max64(state.PlayerMana, 0)}).Error
+	_ = g.players.UpdateColumns(player.ID, map[string]any{"health": remainingHP, "mana": max64(state.PlayerMana, 0)})
 	duration := time.Duration(location.BossCooldownMinutes) * time.Minute
 	if duration <= 0 {
 		duration = time.Hour

@@ -88,7 +88,7 @@ func (g *Game) CachePlayerAvatar(accountID, avatarURL string) error {
 	if (!strings.HasPrefix(lower, "https://") && !strings.HasPrefix(lower, "http://")) || len(avatarURL) > 500 {
 		return errors.New("头像地址不是有效的HTTP地址")
 	}
-	return g.store.DB.Model(&model.Player{}).Where("account_id = ?", accountID).Update("avatar_url", avatarURL).Error
+	return g.players.UpdateAvatarByAccount(accountID, avatarURL)
 }
 
 func (g *Game) playerValue(playerID uint, key string) (string, error) {

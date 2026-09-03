@@ -33,8 +33,8 @@ func (g *Game) requestDaoNameTransfer(player *model.Player, args []string) (Game
 	} else if matched {
 		return GameResult{Title: "新道号审核未通过", Content: "你选择的新道号触发仙盟禁用词，请更换后重试。"}, true, nil
 	}
-	var existing int64
-	if err := g.store.DB.Model(&model.Player{}).Where("dao_name = ?", newName).Count(&existing).Error; err != nil {
+	existing, err := g.counters.CountByDaoName(newName, 0)
+	if err != nil {
 		return GameResult{}, true, err
 	} else if existing > 0 {
 		return GameResult{Title: "新道号已占用", Content: "“" + newName + "”已被其他道友使用，转让请求没有发出。"}, true, nil

@@ -125,13 +125,11 @@ func (g *Game) tryGrowLuckFromEncounterRoll(player *model.Player, roll float64) 
 	if roll > rate {
 		return fmt.Sprintf("天缘气数：本次未凝成永久运气（%.1f%%） · 当前%d/%d", rate*100, before, maximumPlayerLuck), nil
 	}
-	result := g.store.DB.Model(&model.Player{}).
-		Where("id = ? AND luck < ?", player.ID, maximumPlayerLuck).
-		Update("luck", gorm.Expr("CASE WHEN luck < ? THEN luck + 1 ELSE ? END", maximumPlayerLuck, maximumPlayerLuck))
-	if result.Error != nil {
-		return "", result.Error
+	hit, err := g.players.UpdateColumnWhere(player.ID, "luck", gorm.Expr("luck + 1"), "luck < ?", maximumPlayerLuck)
+	if err != nil {
+		return "", err
 	}
-	if result.RowsAffected == 0 {
+	if !hit {
 		return fmt.Sprintf("天缘气数：%d/%d（已达上限）", maximumPlayerLuck, maximumPlayerLuck), nil
 	}
 	after := min64(before+1, maximumPlayerLuck)
