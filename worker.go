@@ -72,6 +72,7 @@ func main() {
 	dataDir := flag.String("data-dir", "", "运行数据目录（默认：可执行文件所在目录）")
 	hostPID := flag.Int("host-pid", 0, "宿主插件进程 PID；进程退出时 worker 自行退出（看门狗）")
 	adminHost := flag.String("admin-host", "127.0.0.1", "管理后台监听地址（默认 127.0.0.1；可设 0.0.0.0 或指定 IP/主机名）")
+	adminToken := flag.String("admin-token", "", "管理后台访问令牌（留空不启用鉴权；运行期可在数据目录放置 admin-token.txt 热更新覆盖）")
 	flag.Parse()
 
 	dir := strings.TrimSpace(*dataDir)
@@ -93,7 +94,7 @@ func main() {
 	// ping 立即可达，首次冷启动不再拖垮插件握手；msg 在就绪前立即降级返回。
 	initDone := make(chan error, 1)
 	go func() {
-		if err := initRuntime(absDir, *adminHost); err != nil {
+		if err := initRuntime(absDir, *adminHost, *adminToken); err != nil {
 			writeRuntimeLog("worker初始化失败", err.Error())
 			initDone <- err
 			return
@@ -116,7 +117,7 @@ func fatal(err error) {
 // initRuntime 初始化数据目录、数据库、游戏引擎与管理后台（幂等）。
 // runtimeState 写锁只在读取/赋值瞬间持有：initRuntime 内部严禁在持锁状态下
 // 调用 writeRuntimeLog（其内部取读锁，Go RWMutex 不可重入，会永久自死锁）。
-func initRuntime(dataDir, adminHost string) error {
+func initRuntime(dataDir, adminHost, adminToken string) error {
 	runtimeState.Lock()
 	alreadyReady := runtimeState.game != nil && strings.EqualFold(runtimeState.dataDir, dataDir)
 	if !alreadyReady {
@@ -139,7 +140,7 @@ func initRuntime(dataDir, adminHost string) error {
 		_ = store.Close()
 		return err
 	}
-	adminURL, err := startAdminServer(store, dataDir, adminHost)
+	adminURL, err := startAdminServer(store, dataDir, adminHost, adminToken)
 	if err != nil {
 		// 管理后台起不来不阻塞游戏主链路，记录后继续。
 		writeRuntimeLog("管理后台启动失败", err.Error())

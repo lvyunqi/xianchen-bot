@@ -6,17 +6,41 @@ export class ApiError extends Error {
   }
 }
 
+const AUTH_TOKEN_KEY = "xianchen-admin-token"
+
+export function getStoredToken(): string {
+  return localStorage.getItem(AUTH_TOKEN_KEY) ?? ""
+}
+
+export function storeToken(token: string) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token)
+}
+
+export function clearStoredToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY)
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getStoredToken()
   let res: Response
   try {
     res = await fetch(path, {
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+        ...(init?.headers ?? {}),
+      },
       ...init,
     })
   } catch {
     throw new ApiError(0, "网络错误，无法连接管理后台")
   }
   if (!res.ok) {
+    if (res.status === 401) {
+      // 会话失效：清空本地令牌并通知 AuthGate 呈现登录页
+      clearStoredToken()
+      window.dispatchEvent(new Event("xianchen:unauthorized"))
+    }
     let message = `请求失败（${res.status}）`
     try {
       const body = await res.json()

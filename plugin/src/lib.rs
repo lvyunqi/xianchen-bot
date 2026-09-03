@@ -29,6 +29,7 @@ pub struct PluginConfig {
     pub io_timeout_secs: u64,
     pub data_subdir: String,
     pub admin_listen_host: String,
+    pub admin_token: String,
     pub qq_official_markdown: bool,
 }
 
@@ -40,6 +41,7 @@ impl Default for PluginConfig {
             io_timeout_secs: 25,
             data_subdir: "xianchen".to_string(),
             admin_listen_host: "127.0.0.1".to_string(),
+            admin_token: String::new(),
             qq_official_markdown: true,
         }
     }
@@ -77,12 +79,14 @@ impl Default for WorkerConfigDocument {
 #[serde(default, deny_unknown_fields)]
 struct AdminConfigDocument {
     listen_host: String,
+    token: String,
 }
 
 impl Default for AdminConfigDocument {
     fn default() -> Self {
         Self {
             listen_host: "127.0.0.1".to_string(),
+            token: String::new(),
         }
     }
 }
@@ -106,6 +110,7 @@ struct WorkerLaunch {
     data_root: PathBuf,
     data_subdir: String,
     admin_host: String,
+    admin_token: String,
     spawn_timeout: Duration,
     io_timeout: Duration,
 }
@@ -226,6 +231,7 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
             io_timeout_secs: document.worker.io_timeout_secs,
             data_subdir: data_subdir.to_string(),
             admin_listen_host: "127.0.0.1".to_string(),
+            admin_token: document.admin.token.trim().to_string(),
             qq_official_markdown: document.messages.qq_official_markdown,
         });
     }
@@ -243,6 +249,7 @@ pub fn parse_config(config_json: &str) -> Result<PluginConfig, String> {
         io_timeout_secs: document.worker.io_timeout_secs,
         data_subdir: data_subdir.to_string(),
         admin_listen_host: admin_listen_host.to_string(),
+        admin_token: document.admin.token.trim().to_string(),
         qq_official_markdown: document.messages.qq_official_markdown,
     })
 }
@@ -264,6 +271,7 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
         data_root: PathBuf::from(data_dir),
         data_subdir: parsed.data_subdir.clone(),
         admin_host: parsed.admin_listen_host.clone(),
+        admin_token: parsed.admin_token.clone(),
         spawn_timeout: Duration::from_secs(parsed.spawn_timeout_secs),
         io_timeout: Duration::from_secs(parsed.io_timeout_secs),
     });
@@ -288,6 +296,7 @@ fn initialize_inner(config: PluginInitConfig) -> Result<(), String> {
             &launch.data_root,
             &launch.data_subdir,
             &launch.admin_host,
+            &launch.admin_token,
             launch.spawn_timeout,
             launch.io_timeout,
         )?),
@@ -347,6 +356,7 @@ fn recover_worker_inner() -> Result<(), String> {
         &launch.data_root,
         &launch.data_subdir,
         &launch.admin_host,
+        &launch.admin_token,
         launch.spawn_timeout.min(Duration::from_secs(20)),
         launch.io_timeout,
     )?;

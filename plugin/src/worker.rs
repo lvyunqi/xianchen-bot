@@ -87,6 +87,7 @@ impl WorkerRuntime {
         data_root: &Path,
         data_subdir: &str,
         admin_host: &str,
+        admin_token: &str,
         spawn_timeout: Duration,
         io_timeout: Duration,
     ) -> Result<Self, String> {
@@ -105,6 +106,8 @@ impl WorkerRuntime {
             } else {
                 admin_host.trim()
             })
+            .arg("--admin-token")
+            .arg(admin_token.trim())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())

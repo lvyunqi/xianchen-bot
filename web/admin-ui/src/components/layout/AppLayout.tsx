@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { Command as CommandIcon, Database, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
+import { Command as CommandIcon, Database, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
+import { clearStoredToken } from "@/lib/api"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 import { CommandPalette } from "@/components/layout/CommandPalette"
@@ -201,6 +202,17 @@ export default function AppLayout() {
             </Button>
             <Button variant="ghost" size="icon" onClick={() => queryClient.invalidateQueries()} title="刷新全部数据">
               <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="退出登录"
+              onClick={() => {
+                clearStoredToken()
+                window.location.reload()
+              }}
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={toggle} title="切换主题">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

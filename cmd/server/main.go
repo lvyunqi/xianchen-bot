@@ -35,6 +35,7 @@ func main() {
 		fatal(err)
 	}
 	assets := os.DirFS(filepath.Join("web", "admin"))
+	handler.SetAdminAuth(cfg.Admin.BootstrapToken, "data")
 	mux := handler.NewAdminMux(store, assets, filepath.Join("data", "uploads"))
 	server := &http.Server{Addr: cfg.Server.Address, Handler: mux, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second}
 	fmt.Printf("仙尘数据后台：http://%s/admin\n", cfg.Server.Address)

@@ -33,3 +33,6 @@ go.work.sum
 web/admin/
 web/admin-ui/tsconfig.tsbuildinfo
 node_modules/
+
+# Rust build cache
+plugin/target/

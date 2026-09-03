@@ -104,13 +104,17 @@ func NewAdminMux(store *storage.Store, static fs.FS, uploadDir string) http.Hand
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)
 	})
-	return monitorMiddleware(recoveryMiddleware(corsMiddleware(mux)))
+	return monitorMiddleware(recoveryMiddleware(corsMiddleware(authMiddleware(mux))))
 }
 
 func (a *AdminAPI) handleAPI(w http.ResponseWriter, r *http.Request) {
 	segments := splitPath(strings.TrimPrefix(r.URL.Path, "/api/"))
 	if len(segments) == 0 {
 		writeError(w, http.StatusNotFound, "接口不存在")
+		return
+	}
+	if segments[0] == "auth" && len(segments) == 2 && segments[1] == "verify" {
+		a.handleAuthVerify(w, r)
 		return
 	}
 	if segments[0] == "config" {

@@ -36,12 +36,14 @@ func adminListenAddress(host string, port int) string {
 	return fmt.Sprintf("%s:%d", trimmed, port)
 }
 
-func startAdminServer(store *storage.Store, dataDir, adminHost string) (string, error) {
+func startAdminServer(store *storage.Store, dataDir, adminHost, adminToken string) (string, error) {
 	adminServerState.Lock()
 	defer adminServerState.Unlock()
 	if adminServerState.server != nil {
 		return adminServerState.url, nil
 	}
+	// 鉴权：启动令牌来自 --admin-token（插件配置透传），数据目录 admin-token.txt 可热更新覆盖。
+	handler.SetAdminAuth(adminToken, dataDir)
 	assets, err := fs.Sub(embeddedAdmin, "web/admin")
 	if err != nil {
 		return "", err

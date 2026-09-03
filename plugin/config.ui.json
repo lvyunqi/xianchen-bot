@@ -23,7 +23,8 @@
     },
     "/admin": {
       "ui:order": [
-        "listen_host"
+        "listen_host",
+        "token"
       ],
       "itemTitle": "管理后台"
     },

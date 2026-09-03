@@ -12,7 +12,8 @@
       "data_subdir": "xianchen"
     },
     "admin": {
-      "listen_host": "127.0.0.1"
+      "listen_host": "127.0.0.1",
+      "token": ""
     },
     "messages": {
       "qq_official_markdown": true
@@ -68,6 +69,13 @@
           "minLength": 1,
           "maxLength": 64,
           "default": "127.0.0.1"
+        },
+        "token": {
+          "title": "访问令牌",
+          "description": "管理后台登录令牌：留空表示不启用鉴权（仅建议本机使用）；设置后打开后台需输入该令牌登录。运行期可在数据目录放置 admin-token.txt 热更新覆盖（改完立即生效，无需重启）。",
+          "type": "string",
+          "maxLength": 128,
+          "default": ""
         }
       }
     },

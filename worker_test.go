@@ -11,7 +11,7 @@ import (
 )
 
 // 回归测试：initRuntime 曾在持有 runtimeState 写锁时调用 writeRuntimeLog
-//（其内部取读锁），Go RWMutex 不可重入导致永久自死锁，“内核状态”永远初始化中。
+// （其内部取读锁），Go RWMutex 不可重入导致永久自死锁，“内核状态”永远初始化中。
 func TestInitRuntimeCompletesWithoutSelfDeadlock(t *testing.T) {
 	// 自管临时目录：异步 runtime.log 写入协程可能在测试结束后仍创建文件，
 	// t.TempDir 的严格清理会因“directory not empty”误报失败，这里尽力清理即可。
@@ -22,7 +22,7 @@ func TestInitRuntimeCompletesWithoutSelfDeadlock(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	done := make(chan error, 1)
 	go func() {
-		done <- initRuntime(dir, "127.0.0.1")
+		done <- initRuntime(dir, "127.0.0.1", "")
 	}()
 	select {
 	case err := <-done:
@@ -152,7 +152,7 @@ func TestStdioLoopMsgWithoutCommandIsIgnored(t *testing.T) {
 	var output strings.Builder
 	initDone := make(chan error, 1)
 	close(initDone)
-	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"text\":\"状态\"}"+ "\n"), &output, initDone)
+	err := runStdioLoop(strings.NewReader("{\"type\":\"msg\",\"text\":\"状态\"}"+"\n"), &output, initDone)
 	if err != nil {
 		t.Fatalf("stdio loop returned error: %v", err)
 	}
