@@ -15,15 +15,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 function navLinkClass(isActive: boolean, compact?: boolean) {
   return cn(
-    "group relative flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] leading-5 text-muted-foreground transition-colors duration-200 hover:bg-white/5 hover:text-foreground",
-    isActive ? "text-foreground" : "",
+    "group relative flex w-full min-w-0 cursor-pointer flex-row flex-nowrap items-center gap-2.5 rounded-md px-3 py-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
+    isActive ? "bg-accent text-accent-foreground" : "",
     compact && "justify-center px-0",
   )
 }
 
 function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
   return (
-    <nav className="scrollbar-thin relative z-10 flex-1 space-y-3.5 overflow-y-auto px-2 py-2.5">
+    <nav className="scrollbar-thin relative z-10 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
       {resourcesByGroup().map(([group, items]) => (
         <div key={group}>
           {!compact && (
@@ -31,7 +31,7 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
               {group}
             </div>
           )}
-          <div className="space-y-px">
+          <div className="space-y-0.5">
             {items.map((r) => (
               <Tooltip key={r.key} delayDuration={200}>
                 <TooltipTrigger asChild>
@@ -163,8 +163,8 @@ export default function AppLayout() {
         {/* 桌面侧栏：悬浮玻璃面板 */}
         <aside
           className={cn(
-            "glass-strong fixed inset-y-3 left-3 z-30 hidden flex-col rounded-2xl transition-[width] duration-300 ease-in-out md:flex",
-            collapsed ? "w-14" : "w-56",
+            "fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border bg-card md:flex",
+            collapsed ? "w-14" : "w-60",
           )}
         >
           <Brand compact={collapsed} />
@@ -187,7 +187,7 @@ export default function AppLayout() {
         <div
           className={cn(
             "flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-in-out",
-            collapsed ? "md:pl-[4.75rem]" : "md:pl-60",
+            collapsed ? "md:pl-14" : "md:pl-60",
           )}
         >
           <header className="sticky top-0 z-20 flex h-14 items-center gap-1.5 border-b border-border/40 bg-background/55 px-4 backdrop-blur-xl">
@@ -198,7 +198,7 @@ export default function AppLayout() {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-[min(18rem,calc(100vw-1rem))] bg-card p-0">
                   <SheetTitle className="sr-only">导航菜单</SheetTitle>
                   <Brand />
                   <NavList onNavigate={() => setMobileOpen(false)} />
@@ -242,7 +242,7 @@ export default function AppLayout() {
             </Button>
           </header>
 
-          <main className="flex-1 p-4 md:px-6 md:py-5">
+          <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:px-6 md:py-5">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
