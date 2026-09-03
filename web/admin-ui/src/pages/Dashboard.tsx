@@ -1,25 +1,43 @@
 import { useQuery } from "@tanstack/react-query"
 import { motion } from "framer-motion"
-import { CloudOff, RefreshCw, Sparkles } from "lucide-react"
-import { api, type ResourceRecord } from "@/lib/api"
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts"
+import { CloudOff, RefreshCw, ScrollText, Sparkles, TrendingUp } from "lucide-react"
+import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
-function StatCard({ metric, value, index }: { metric: string; value: string; index: number }) {
+interface DashboardData {
+  metrics: Record<string, number>
+  trend: { day: string; count: number }[]
+  recent: { id: number; gm_name: string; action: string; target_type: string; target_id: string; created_at: string }[]
+}
+
+const METRIC_LABELS: Record<string, { label: string; hint: string }> = {
+  players: { label: "注册玩家", hint: "玩家表总人数" },
+  active_today: { label: "今日活跃", hint: "今天有过游戏操作的玩家" },
+  couples: { label: "仙侣结缘", hint: "已缔结的仙侣关系" },
+  pending_reviews: { label: "待审核", hint: "排队中的道号与内容审核" },
+  items: { label: "物品种类", hint: "物品目录条目" },
+}
+
+const METRIC_ORDER = ["players", "active_today", "couples", "pending_reviews", "items"]
+
+function MetricCard({ metric, value, index }: { metric: string; value: number; index: number }) {
+  const meta = METRIC_LABELS[metric] ?? { label: metric, hint: "" }
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 26, delay: Math.min(index * 0.04, 0.4) }}
+      transition={{ type: "spring", stiffness: 300, damping: 26, delay: Math.min(index * 0.05, 0.4) }}
+      title={meta.hint || undefined}
     >
       <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift">
-        {/* 顶部鎏金发丝线，hover 时点亮 */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent opacity-60 transition-opacity duration-200 group-hover:opacity-100" />
         <CardContent className="p-5">
-          <div className="text-[13px] font-medium text-muted-foreground">{metric}</div>
-          <div className="tnum mt-2 font-mono text-[26px] font-semibold leading-none tracking-tight text-foreground">
-            {value}
+          <div className="text-[13px] font-medium text-muted-foreground">{meta.label}</div>
+          <div className="tnum mt-2 font-mono text-[26px] font-semibold leading-none tracking-tight">
+            {value.toLocaleString()}
           </div>
         </CardContent>
       </Card>
@@ -27,23 +45,78 @@ function StatCard({ metric, value, index }: { metric: string; value: string; ind
   )
 }
 
-function DashboardFallback({ onRetry }: { onRetry: () => void }) {
+function TrendChart({ trend }: { trend: { day: string; count: number }[] }) {
   return (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-          <Sparkles className="h-5 w-5" />
-        </div>
-        <div className="space-y-1">
-          <div className="text-sm font-medium">暂无运营数据</div>
-          <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
-            总览接口暂未返回数据（/api/dashboard）。确认 worker 已完成初始化后可重新拉取。
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          重新拉取
-        </Button>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          近七日新增玩家
+        </CardTitle>
+        <CardDescription>按玩家创建日期统计</CardDescription>
+      </CardHeader>
+      <CardContent className="h-56 pt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={trend} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+            <defs>
+              <linearGradient id="jadeFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} width={44} />
+            <ChartTooltip
+              contentStyle={{
+                background: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 10,
+                fontSize: 12,
+                color: "hsl(var(--popover-foreground))",
+              }}
+              formatter={(v: number | string) => [v, "新增"]}
+            />
+            <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#jadeFill)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
+function RecentLogs({ logs }: { logs: DashboardData["recent"] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ScrollText className="h-4 w-4 text-gold" />
+          最近操作
+        </CardTitle>
+        <CardDescription>管理端操作审计（最新 8 条）</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {logs.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">还没有操作记录。</p>
+        ) : (
+          <ul className="space-y-1">
+            {logs.map((log, i) => (
+              <li
+                key={log.id ?? i}
+                className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted/60"
+              >
+                <span className="tnum shrink-0 font-mono text-xs text-muted-foreground">
+                  {String(log.created_at ?? "").slice(5, 16)}
+                </span>
+                <span className="shrink-0 font-medium">{log.gm_name || "-"}</span>
+                <span className="shrink-0">{log.action ?? "-"}</span>
+                <span className="min-w-0 truncate text-muted-foreground">
+                  {log.target_type ? log.target_type + (log.target_id ? " #" + log.target_id : "") : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   )
@@ -52,8 +125,14 @@ function DashboardFallback({ onRetry }: { onRetry: () => void }) {
 export default function Dashboard() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => api.list<ResourceRecord>("dashboard"),
+    queryFn: () => api.getJson<DashboardData>("/api/dashboard"),
   })
+
+  const metrics = data?.metrics ?? {}
+  const metricKeys = [
+    ...METRIC_ORDER.filter((k) => k in metrics),
+    ...Object.keys(metrics).filter((k) => !(k in METRIC_LABELS)),
+  ]
 
   return (
     <div className="space-y-6">
@@ -62,10 +141,13 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground">玩家、活跃与运行概况</p>
       </div>
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-[88px] rounded-xl" />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-64 rounded-xl" />
         </div>
       ) : isError ? (
         <Card className="border-destructive/40">
@@ -79,14 +161,36 @@ export default function Dashboard() {
             </Button>
           </CardContent>
         </Card>
-      ) : !data?.length ? (
-        <DashboardFallback onRetry={() => refetch()} />
+      ) : !data ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="text-sm font-medium">暂无运营数据</div>
+              <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
+                总览接口暂未返回数据。确认 worker 已完成初始化后可重新拉取。
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              重新拉取
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {data.map((row, i) => (
-            <StatCard key={i} metric={String(row.metric ?? "-")} value={String(row.value ?? "-")} index={i} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {metricKeys.slice(0, 8).map((key, i) => (
+              <MetricCard key={key} metric={key} value={Number(metrics[key] ?? 0)} index={i} />
+            ))}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TrendChart trend={data.trend ?? []} />
+            <RecentLogs logs={data.recent ?? []} />
+          </div>
+        </>
       )}
     </div>
   )

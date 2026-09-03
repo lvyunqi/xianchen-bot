@@ -320,16 +320,28 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
         </CardContent>
       </Card>
 
-      {!virtualEnabled && filteredRows.length > pagination.pageSize && (
+      {!virtualEnabled && filteredRows.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>共 {filteredRows.length} 条 · 第 {pageIndex + 1}/{pageCount} 页</span>
-          <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={pageIndex === 0} onClick={() => table.previousPage()}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={pageIndex >= pageCount - 1} onClick={() => table.nextPage()}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <span>共 {filteredRows.length} 条{filteredRows.length > pagination.pageSize ? ` · 第 ${pageIndex + 1}/${pageCount} 页` : ""}</span>
+          <div className="flex items-center gap-2">
+            <select
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none transition-colors hover:bg-accent/50"
+              value={pagination.pageSize}
+              onChange={(e) => setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })}
+              aria-label="每页条数"
+            >
+              {[10, 20, 50, 100].map((n) => (
+                <option key={n} value={n}>每页 {n} 条</option>
+              ))}
+            </select>
+            <div className="flex gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={pageIndex === 0} onClick={() => table.previousPage()}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={pageIndex >= pageCount - 1} onClick={() => table.nextPage()}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}

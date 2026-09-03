@@ -1,12 +1,14 @@
 import { useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
-import { Database, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
+import { Command as CommandIcon, Database, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
 import { useTheme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
+import { CommandPalette } from "@/components/layout/CommandPalette"
 import { Button } from "@/components/ui/button"
+import { Kbd } from "@/components/ui/kbd"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -123,13 +125,22 @@ function Brand({ compact }: { compact?: boolean }) {
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const location = useLocation()
   const queryClient = useQueryClient()
   const current = RESOURCE_MAP.get(location.pathname.replace(/^\/r\//, "").replace(/^\//, "") || "dashboard")
+  const refreshAll = () => queryClient.invalidateQueries()
 
   return (
     <TooltipProvider delayDuration={200}>
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onRefresh={() => queryClient.invalidateQueries()}
+        onToggleTheme={toggle}
+        theme={theme}
+      />
       <div className="flex min-h-dvh">
         {/* 桌面侧栏 */}
         <aside
@@ -175,6 +186,19 @@ export default function AppLayout() {
               <div className="truncate text-sm font-semibold">{current?.title ?? "仙尘管理后台"}</div>
               {current && <div className="truncate text-xs text-muted-foreground">{current.description}</div>}
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden gap-2 text-muted-foreground sm:flex"
+              onClick={() => setPaletteOpen(true)}
+            >
+              <CommandIcon className="h-3.5 w-3.5" />
+              <span className="text-xs">搜索</span>
+              <Kbd>Ctrl K</Kbd>
+            </Button>
+            <Button variant="ghost" size="icon" className="sm:hidden" onClick={() => setPaletteOpen(true)} title="搜索">
+              <CommandIcon className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => queryClient.invalidateQueries()} title="刷新全部数据">
               <RefreshCw className="h-4 w-4" />
             </Button>
