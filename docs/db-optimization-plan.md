@@ -79,7 +79,9 @@ Player 单表 60+ 列（派生值 CombatPower 等全部落库）；大量 `type:
 1. **repo 接口收口**：从 1156 处直查按热度渐进替换（先 Player/Item/Log/Social 四个热域），service 注入窄接口——可 mock、Postgres/SQLite 双驱动差异收敛到实现层
 2. **流水写入统一 + 批量缓冲**：全部走 LogRepository，内部 channel + 定时 flush（500 条/批），写放大立降
 3. **JSON blob 治理**：高频查询字段（进度/条件的关键键）提为真实列 + 索引，blob 只存真正的自由文本
+   > **落地前置条件（证据法，2026-07 修订）**：全库走查后仅 3 处 JSON-in-query（game_item_sources.go:35/44 的目录表 LIKE、barter 定位 content LIKE），P2 降容后目录表仅百行级、社交表有 60 天保留 + 复合索引先行过滤，均无慢查询证据。blob 治理属 schema 清晰度收益而非性能收益——**暂缓，待 SlowQueryLog 出现真实 JSON 列慢查询再立项**，避免无证据重构。
 4. **Player 拆表**：PlayerCore（身份）/ PlayerProgress（成长）/ PlayerProfile（展示档案），派生值实时计算
+   > **落地前置条件（证据法，2026-07 修订）**：47MB 主因（种子×1000 + 零清理）已在 P1/P2 根除，60 列宽表的实际读写开销未经 SlowQueryLog 证实；拆表需 schema 258→259 迁移 + 全部玩家读写点改造，风险/收益比当前不成立。**待生产库运行一个版本周期后按 P95 慢查询证据立项**。
 5. **schema 治理**：AutoMigrate 收敛为显式迁移目录（migrations/NNN_xxx.sql），种子与迁移分离；repo 声明 RetentionPolicy 元数据，新增表天然带清理
 
 ## 六、落地顺序
