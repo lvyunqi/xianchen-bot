@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { NavLink, Outlet, useLocation } from "react-router-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { Command as CommandIcon, Database, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
+import { ChevronDown, Command as CommandIcon, Database, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { resourcesByGroup, RESOURCE_MAP } from "@/lib/resources/registry"
 import { clearStoredToken } from "@/lib/api"
@@ -15,76 +15,110 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 function navLinkClass(isActive: boolean, compact?: boolean) {
   return cn(
-    "group relative flex h-9 w-full min-w-0 cursor-pointer flex-row flex-nowrap items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
-    isActive ? "bg-accent text-accent-foreground" : "",
-    compact && "justify-center px-0",
+    "group grid h-9 w-full min-w-0 cursor-pointer grid-cols-[16px_minmax(0,1fr)] items-center gap-2.5 overflow-hidden rounded-md px-3 py-2 text-[13px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
+    isActive ? "bg-accent font-medium text-accent-foreground" : "",
+    compact && "grid-cols-[16px] justify-center px-0",
   )
 }
 
 function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: boolean }) {
+  const location = useLocation()
+  const groups = useMemo(() => resourcesByGroup(), [])
+  const activeKey = location.pathname.replace(/^\/r\//, "").replace(/^\//, "") || "dashboard"
+  const activeGroup = groups.find(([, items]) => items.some((item) => item.key === activeKey))?.[0]
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(activeGroup ? [activeGroup] : [groups[0]?.[0]]))
+
+  useEffect(() => {
+    if (!activeGroup) return
+    setOpenGroups((current) => {
+      if (current.has(activeGroup)) return current
+      const next = new Set(current)
+      next.add(activeGroup)
+      return next
+    })
+  }, [activeGroup])
+
+  const toggleGroup = (group: string) => {
+    setOpenGroups((current) => {
+      const next = new Set(current)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }
+
+  if (compact) {
+    return (
+      <nav className="scrollbar-thin flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-3">
+        {groups.flatMap(([, items]) => items).map((item) => (
+          <Tooltip key={item.key} delayDuration={200}>
+            <TooltipTrigger asChild>
+              <NavLink
+                to={item.key === "dashboard" ? "/" : `/r/${item.key}`}
+                className={({ isActive }) => navLinkClass(isActive, true)}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right">{item.title}</TooltipContent>
+          </Tooltip>
+        ))}
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <NavLink to="/database" className={({ isActive }) => navLinkClass(isActive, true)}>
+              <Database className="h-4 w-4 shrink-0" />
+            </NavLink>
+          </TooltipTrigger>
+          <TooltipContent side="right">数据运维</TooltipContent>
+        </Tooltip>
+      </nav>
+    )
+  }
+
   return (
-    <nav className="scrollbar-thin relative z-10 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 py-3">
-      {resourcesByGroup().map(([group, items]) => (
-        <div key={group}>
-          {!compact && (
-            <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
-              {group}
-            </div>
-          )}
-          <div className="space-y-0.5">
-            {items.map((r) => (
-              <Tooltip key={r.key} delayDuration={200}>
-                <TooltipTrigger asChild>
-                  <NavLink
-                    to={r.key === "dashboard" ? "/" : `/r/${r.key}`}
-                    onClick={onNavigate}
-                    className={({ isActive }) => navLinkClass(isActive, compact)}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <r.icon
-                          className={cn(
-                            "relative h-4 w-4 shrink-0",
-                            isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
-                          )}
-                        />
-                        {!compact && (
-                          <span className={cn("min-w-0 truncate whitespace-nowrap", isActive && "font-medium")}>{r.title}</span>
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                </TooltipTrigger>
-                {compact && <TooltipContent side="right">{r.title}</TooltipContent>}
-              </Tooltip>
-            ))}
-          </div>
-        </div>
-      ))}
-      <div>
-        {!compact && (
-          <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
-            系统工具
-          </div>
-        )}
-        <NavLink
-          to="/database"
-          onClick={onNavigate}
-          className={({ isActive }) => navLinkClass(isActive, compact)}
-        >
-          {({ isActive }) => (
-            <>
-              <Database
+    <nav className="scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3">
+      <div className="space-y-1">
+        {groups.map(([group, items]) => {
+          const isOpen = openGroups.has(group)
+          const hasActiveItem = items.some((item) => item.key === activeKey)
+          return (
+            <div key={group}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(group)}
+                aria-expanded={isOpen}
                 className={cn(
-                  "relative h-4 w-4 shrink-0",
-                  isActive ? "text-gold" : "text-muted-foreground/75 group-hover:text-foreground",
+                  "flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                  hasActiveItem && "text-foreground",
                 )}
-              />
-              {!compact && (
-                <span className={cn("min-w-0 truncate whitespace-nowrap", isActive && "font-medium")}>数据运维</span>
+              >
+                <span className="truncate whitespace-nowrap">{group}</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")} />
+              </button>
+              {isOpen && (
+                <div className="mt-0.5 space-y-0.5 border-l border-border/70 pl-2">
+                  {items.map((item) => (
+                    <NavLink
+                      key={item.key}
+                      to={item.key === "dashboard" ? "/" : `/r/${item.key}`}
+                      onClick={onNavigate}
+                      className={({ isActive }) => navLinkClass(isActive)}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="min-w-0 truncate whitespace-nowrap">{item.title}</span>
+                    </NavLink>
+                  ))}
+                </div>
               )}
-            </>
-          )}
+            </div>
+          )
+        })}
+      </div>
+      <div className="mt-3 border-t pt-3">
+        <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">系统工具</div>
+        <NavLink to="/database" onClick={onNavigate} className={({ isActive }) => navLinkClass(isActive)}>
+          <Database className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate whitespace-nowrap">数据运维</span>
         </NavLink>
       </div>
     </nav>
@@ -93,17 +127,12 @@ function NavList({ onNavigate, compact }: { onNavigate?: () => void; compact?: b
 
 function Brand({ compact }: { compact?: boolean }) {
   return (
-    <div
-      className={cn(
-        "relative z-10 flex h-14 shrink-0 items-center gap-2.5 border-b border-border/40 px-3.5",
-        compact && "justify-center px-0",
-      )}
-    >
-      <img src="/admin/assets/logo.png" alt="仙尘" className="h-8 w-8 rounded-xl shadow-card" />
+    <div className={cn("flex h-14 shrink-0 items-center gap-2.5 border-b px-3.5", compact && "justify-center px-0")}>
+      <img src="/admin/assets/logo.png" alt="仙尘" className="h-8 w-8 shrink-0 rounded-lg" />
       {!compact && (
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-[13px] font-semibold tracking-wide">仙尘管理后台</div>
-          <div className="text-gilded truncate text-[10px] font-medium tracking-[0.18em]">修仙界 · 运营台</div>
+          <div className="truncate whitespace-nowrap text-[13px] font-semibold">仙尘管理后台</div>
+          <div className="truncate whitespace-nowrap text-[10px] text-muted-foreground">修仙界 · 运营台</div>
         </div>
       )}
     </div>
