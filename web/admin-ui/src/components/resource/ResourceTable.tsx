@@ -28,7 +28,7 @@ interface Props {
   isError: boolean
   onCreate: () => void
   onEdit: (record: ResourceRecord) => void
-  onDelete: (record: ResourceRecord) => void
+  onDelete?: (record: ResourceRecord) => void
   onBatchDelete?: (records: ResourceRecord[]) => void
   onBatchToggle?: (records: ResourceRecord[], enabled: boolean) => void
 }
@@ -126,9 +126,11 @@ export function ResourceTable({ def, records, isLoading, isError, onCreate, onEd
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEdit(row.original) }}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(row.original) }}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {onDelete && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(row.original) }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       ),
     })

@@ -44,8 +44,17 @@ export function ResourceForm({ def, open, onOpenChange, record }: Props) {
         if (f.type === "number" && (v === "" || v === null)) continue
         body[f.key] = v
       }
-      if (record) return api.update(def.key, record.id as number, body)
-      return api.create(def.key, body)
+      if (def.configMode) {
+        const configKey = String((record?.key as string) ?? body.key ?? "")
+        if (!configKey) throw new Error("配置键不能为空")
+        return api.configSave(configKey, {
+          value: body.value,
+          value_type: body.value_type as string | undefined,
+          description: body.description as string | undefined,
+        })
+      }
+      if (record) return api.update(def.endpoint ?? def.key, record.id as number, body)
+      return api.create(def.endpoint ?? def.key, body)
     },
     onSuccess: () => {
       toast.success(record ? "保存成功" : "创建成功")

@@ -88,4 +88,15 @@ export const api = {
   getJson: <T>(path: string) => request<T>(path),
   postJson: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
+  /** 系统设置：按前缀拉取（返回完整数组） */
+  configList: <T = ResourceRecord>(prefix: string) =>
+    request<T[]>(`/api/config?prefix=${encodeURIComponent(prefix)}`),
+  /** 系统设置：按 key 保存（FirstOrCreate，可建可改） */
+  configSave: (key: string, body: { value: unknown; value_type?: string; description?: string }) =>
+    request<ResourceRecord>(`/api/config/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  /** 运行监控汇总 */
+  monitor: <T = Record<string, unknown>>() => request<T>("/api/monitor"),
 }

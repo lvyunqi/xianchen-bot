@@ -12,6 +12,16 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
+import type { ResourceDef } from "@/lib/resources/types"
+
+function apiPath(def: ResourceDef | undefined): string {
+  return def?.endpoint ?? "/api/"
+}
+
+function prefixOf(endpoint: string | undefined): string {
+  const q = endpoint?.split("?")[1] ?? ""
+  return new URLSearchParams(q).get("prefix") ?? ""
+}
 
 export default function ResourcePage() {
   const { key = "" } = useParams()
@@ -30,12 +40,19 @@ export default function ResourcePage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["resource", key],
-    queryFn: () => api.list<ResourceRecord>(key),
+    queryFn: async () => {
+      if (def?.monitorField) {
+        const res = await api.monitor<Record<string, Record<string, unknown>>>()
+        return [res[def.monitorField] ?? {}] as ResourceRecord[]
+      }
+      if (def?.configMode) return api.configList<ResourceRecord>(prefixOf(def.endpoint))
+      return api.list<ResourceRecord>(def?.endpoint ?? key)
+    },
     enabled: Boolean(def),
   })
 
   const removeMutation = useMutation({
-    mutationFn: (target: ResourceRecord) => api.remove(key, target.id as number),
+    mutationFn: (target: ResourceRecord) => api.remove(apiPath(def), String(target.id)),
     onSuccess: () => {
       toast.success("删除成功")
       queryClient.invalidateQueries({ queryKey: ["resource", key] })
@@ -46,7 +63,7 @@ export default function ResourcePage() {
 
   const batchDelete = useMutation({
     mutationFn: async (targets: ResourceRecord[]) => {
-      for (const t of targets) await api.remove(key, t.id as number)
+      for (const t of targets) await api.remove(apiPath(def), String(t.id))
       return targets.length
     },
     onSuccess: (n) => {
@@ -61,7 +78,7 @@ export default function ResourcePage() {
       let n = 0
       for (const t of targets) {
         try {
-          await api.update(key, t.id as number, { enabled })
+          await api.update(apiPath(def), String(t.id), { enabled })
           n++
         } catch {
           /* 单条失败不中断 */
@@ -84,22 +101,28 @@ export default function ResourcePage() {
     )
   }
 
-  if (def.readonly) {
+  if (def.readonly || def.monitorField) {
     return <ReadonlyStats title={def.title} records={data ?? []} isLoading={isLoading} isError={isError} />
   }
+
+  // 系统设置行没有数字 id：用 key 当主键，且不支持删除/批量启停
+  const records = def.configMode
+    ? (data ?? []).map((r) => ({ ...r, id: (r.key ?? "") as unknown as number }))
+    : data ?? []
+  const deletable = !def.configMode
 
   return (
     <div className="space-y-4">
       <ResourceTable
         def={def}
-        records={data ?? []}
+        records={records}
         isLoading={isLoading}
         isError={isError}
         onCreate={() => { setEditing(null); setFormOpen(true) }}
         onEdit={(r) => { setEditing(r); setFormOpen(true) }}
-        onDelete={(r) => setDeleting(r)}
-        onBatchDelete={(rs) => batchDelete.mutate(rs)}
-        onBatchToggle={(rs, enabled) => batchToggle.mutate({ targets: rs, enabled })}
+        onDelete={deletable ? (r) => setDeleting(r) : undefined}
+        onBatchDelete={deletable ? (rs) => batchDelete.mutate(rs) : undefined}
+        onBatchToggle={deletable ? (rs, enabled) => batchToggle.mutate({ targets: rs, enabled }) : undefined}
       />
       <ResourceForm def={def} open={formOpen} onOpenChange={setFormOpen} record={editing} />
       <AlertDialog open={Boolean(deleting)} onOpenChange={(o) => !o && setDeleting(null)}>

@@ -35,6 +35,12 @@ export interface ResourceDef {
   fields?: FieldDef[]
   /** 只读监控页（无 CRUD） */
   readonly?: boolean
+  /** 覆盖默认的 /api/{key} 请求路径（可带 query） */
+  endpoint?: string
+  /** 系统设置型资源：key/value 行，PUT /api/config/{key} 保存，不支持删除 */
+  configMode?: boolean
+  /** 从 /api/monitor 响应取哪一块渲染成单行只读表 */
+  monitorField?: "server" | "online" | "requests" | "performance"
 }
 
 export const GROUP_ORDER = [
